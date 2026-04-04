@@ -1,10 +1,12 @@
 // https://docs.expo.dev/guides/using-eslint/
-const { defineConfig } = require('eslint/config');
-const expoConfig = require('eslint-config-expo/flat');
+import { defineConfig } from 'eslint/config';
+import expoConfig from 'eslint-config-expo/flat.js';
+import pluginQuery from '@tanstack/eslint-plugin-query';
 
-module.exports = defineConfig([
+export default defineConfig([
+  ...pluginQuery.configs["flat/recommended"],
   expoConfig,
   {
-    ignores: ['dist/*'],
+    ignores: ["dist/*"],
   },
 ]);
