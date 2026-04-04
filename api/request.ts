@@ -1,4 +1,4 @@
-import { ApiError } from '@/api/errors';
+import { ApiError } from "@/api/errors";
 
 // ---------------------------------------------------------------------------
 // Configuration & option types
@@ -12,7 +12,7 @@ export type RequestConfig = {
 };
 
 export type RequestOptions<T = unknown> = {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   path: string;
   /**
    * Query parameters appended to the URL. `undefined` values are stripped
@@ -32,7 +32,7 @@ export type RequestOptions<T = unknown> = {
 
 /** Strip a single trailing slash so we can safely append `/v1/…` paths. */
 function normalizeBaseUrl(url: string): string {
-  return url.endsWith('/') ? url.slice(0, -1) : url;
+  return url.endsWith("/") ? url.slice(0, -1) : url;
 }
 
 /**
@@ -44,7 +44,7 @@ function normalizeBaseUrl(url: string): string {
 function buildUrl(
   baseUrl: string,
   path: string,
-  query?: RequestOptions['query'],
+  query?: RequestOptions["query"],
 ): string {
   const url = new URL(path, normalizeBaseUrl(baseUrl));
 
@@ -69,9 +69,7 @@ function buildUrl(
  * Try to parse a Miniflux JSON error body (`{ "error_message": "..." }`).
  * Returns `null` when the body is empty or not valid JSON.
  */
-async function parseErrorBody(
-  response: Response,
-): Promise<string | null> {
+async function parseErrorBody(response: Response): Promise<string | null> {
   try {
     const body = await response.text();
     if (!body) return null;
@@ -100,16 +98,16 @@ export async function request<T>(
   config: RequestConfig,
   options: RequestOptions,
 ): Promise<T> {
-  const { method = 'GET', path, query, body, signal } = options;
+  const { method = "GET", path, query, body, signal } = options;
   const url = buildUrl(config.baseUrl, path, query);
 
   const headers: Record<string, string> = {
-    'X-Auth-Token': config.token,
-    'Accept': 'application/json',
+    "X-Auth-Token": config.token,
+    Accept: "application/json",
   };
 
   if (body !== undefined) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
   }
 
   const response = await fetch(url, {

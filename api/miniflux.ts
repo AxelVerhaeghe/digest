@@ -1,5 +1,5 @@
-import type { RequestConfig } from '@/api/request';
-import { request } from '@/api/request';
+import type { RequestConfig } from "@/api/request";
+import { request } from "@/api/request";
 import type {
   Category,
   CreateCategoryRequest,
@@ -16,7 +16,7 @@ import type {
   UpdateEntriesRequest,
   UpdateFeedRequest,
   User,
-} from '@/api/types';
+} from "@/api/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -29,12 +29,17 @@ import type {
  */
 function entryQuery(
   params?: EntryQueryParams,
-): Record<string, string | number | boolean | string[] | undefined> | undefined {
+):
+  | Record<string, string | number | boolean | string[] | undefined>
+  | undefined {
   if (!params) return undefined;
 
   const { status, ...rest } = params;
 
-  const query: Record<string, string | number | boolean | string[] | undefined> = {
+  const query: Record<
+    string,
+    string | number | boolean | string[] | undefined
+  > = {
     ...rest,
   };
 
@@ -76,7 +81,7 @@ export class MinifluxClient {
 
   getFeeds(signal?: AbortSignal): Promise<Feed[]> {
     return request<Feed[]>(this.config, {
-      path: '/v1/feeds',
+      path: "/v1/feeds",
       signal,
     });
   }
@@ -95,18 +100,25 @@ export class MinifluxClient {
     });
   }
 
-  createFeed(params: CreateFeedRequest, signal?: AbortSignal): Promise<CreateFeedResponse> {
+  createFeed(
+    params: CreateFeedRequest,
+    signal?: AbortSignal,
+  ): Promise<CreateFeedResponse> {
     return request<CreateFeedResponse>(this.config, {
-      method: 'POST',
-      path: '/v1/feeds',
+      method: "POST",
+      path: "/v1/feeds",
       body: params,
       signal,
     });
   }
 
-  updateFeed(feedId: number, params: UpdateFeedRequest, signal?: AbortSignal): Promise<Feed> {
+  updateFeed(
+    feedId: number,
+    params: UpdateFeedRequest,
+    signal?: AbortSignal,
+  ): Promise<Feed> {
     return request<Feed>(this.config, {
-      method: 'PUT',
+      method: "PUT",
       path: `/v1/feeds/${feedId}`,
       body: params,
       signal,
@@ -115,7 +127,7 @@ export class MinifluxClient {
 
   deleteFeed(feedId: number, signal?: AbortSignal): Promise<void> {
     return request<void>(this.config, {
-      method: 'DELETE',
+      method: "DELETE",
       path: `/v1/feeds/${feedId}`,
       signal,
     });
@@ -123,7 +135,7 @@ export class MinifluxClient {
 
   refreshFeed(feedId: number, signal?: AbortSignal): Promise<void> {
     return request<void>(this.config, {
-      method: 'PUT',
+      method: "PUT",
       path: `/v1/feeds/${feedId}/refresh`,
       signal,
     });
@@ -131,8 +143,8 @@ export class MinifluxClient {
 
   refreshAllFeeds(signal?: AbortSignal): Promise<void> {
     return request<void>(this.config, {
-      method: 'PUT',
-      path: '/v1/feeds/refresh',
+      method: "PUT",
+      path: "/v1/feeds/refresh",
       signal,
     });
   }
@@ -153,9 +165,12 @@ export class MinifluxClient {
 
   // ---- Entries ------------------------------------------------------------
 
-  getEntries(params?: EntryQueryParams, signal?: AbortSignal): Promise<EntryListResponse> {
+  getEntries(
+    params?: EntryQueryParams,
+    signal?: AbortSignal,
+  ): Promise<EntryListResponse> {
     return request<EntryListResponse>(this.config, {
-      path: '/v1/entries',
+      path: "/v1/entries",
       query: entryQuery(params),
       signal,
     });
@@ -192,17 +207,24 @@ export class MinifluxClient {
     });
   }
 
-  getFeedEntry(feedId: number, entryId: number, signal?: AbortSignal): Promise<Entry> {
+  getFeedEntry(
+    feedId: number,
+    entryId: number,
+    signal?: AbortSignal,
+  ): Promise<Entry> {
     return request<Entry>(this.config, {
       path: `/v1/feeds/${feedId}/entries/${entryId}`,
       signal,
     });
   }
 
-  updateEntries(params: UpdateEntriesRequest, signal?: AbortSignal): Promise<void> {
+  updateEntries(
+    params: UpdateEntriesRequest,
+    signal?: AbortSignal,
+  ): Promise<void> {
     return request<void>(this.config, {
-      method: 'PUT',
-      path: '/v1/entries',
+      method: "PUT",
+      path: "/v1/entries",
       body: params,
       signal,
     });
@@ -210,13 +232,16 @@ export class MinifluxClient {
 
   toggleBookmark(entryId: number, signal?: AbortSignal): Promise<void> {
     return request<void>(this.config, {
-      method: 'PUT',
+      method: "PUT",
       path: `/v1/entries/${entryId}/bookmark`,
       signal,
     });
   }
 
-  fetchOriginalContent(entryId: number, signal?: AbortSignal): Promise<FetchContentResponse> {
+  fetchOriginalContent(
+    entryId: number,
+    signal?: AbortSignal,
+  ): Promise<FetchContentResponse> {
     return request<FetchContentResponse>(this.config, {
       path: `/v1/entries/${entryId}/fetch-content`,
       signal,
@@ -227,7 +252,7 @@ export class MinifluxClient {
 
   markFeedAsRead(feedId: number, signal?: AbortSignal): Promise<void> {
     return request<void>(this.config, {
-      method: 'PUT',
+      method: "PUT",
       path: `/v1/feeds/${feedId}/mark-all-as-read`,
       signal,
     });
@@ -235,7 +260,7 @@ export class MinifluxClient {
 
   markCategoryAsRead(categoryId: number, signal?: AbortSignal): Promise<void> {
     return request<void>(this.config, {
-      method: 'PUT',
+      method: "PUT",
       path: `/v1/categories/${categoryId}/mark-all-as-read`,
       signal,
     });
@@ -243,7 +268,7 @@ export class MinifluxClient {
 
   markAllAsRead(userId: number, signal?: AbortSignal): Promise<void> {
     return request<void>(this.config, {
-      method: 'PUT',
+      method: "PUT",
       path: `/v1/users/${userId}/mark-all-as-read`,
       signal,
     });
@@ -253,16 +278,19 @@ export class MinifluxClient {
 
   getCategories(counts?: boolean, signal?: AbortSignal): Promise<Category[]> {
     return request<Category[]>(this.config, {
-      path: '/v1/categories',
+      path: "/v1/categories",
       query: counts ? { counts: true } : undefined,
       signal,
     });
   }
 
-  createCategory(params: CreateCategoryRequest, signal?: AbortSignal): Promise<Category> {
+  createCategory(
+    params: CreateCategoryRequest,
+    signal?: AbortSignal,
+  ): Promise<Category> {
     return request<Category>(this.config, {
-      method: 'POST',
-      path: '/v1/categories',
+      method: "POST",
+      path: "/v1/categories",
       body: params,
       signal,
     });
@@ -274,7 +302,7 @@ export class MinifluxClient {
     signal?: AbortSignal,
   ): Promise<Category> {
     return request<Category>(this.config, {
-      method: 'PUT',
+      method: "PUT",
       path: `/v1/categories/${categoryId}`,
       body: params,
       signal,
@@ -283,15 +311,18 @@ export class MinifluxClient {
 
   deleteCategory(categoryId: number, signal?: AbortSignal): Promise<void> {
     return request<void>(this.config, {
-      method: 'DELETE',
+      method: "DELETE",
       path: `/v1/categories/${categoryId}`,
       signal,
     });
   }
 
-  refreshCategoryFeeds(categoryId: number, signal?: AbortSignal): Promise<void> {
+  refreshCategoryFeeds(
+    categoryId: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
     return request<void>(this.config, {
-      method: 'PUT',
+      method: "PUT",
       path: `/v1/categories/${categoryId}/refresh`,
       signal,
     });
@@ -301,14 +332,14 @@ export class MinifluxClient {
 
   getCounters(signal?: AbortSignal): Promise<FeedCounters> {
     return request<FeedCounters>(this.config, {
-      path: '/v1/feeds/counters',
+      path: "/v1/feeds/counters",
       signal,
     });
   }
 
   getCurrentUser(signal?: AbortSignal): Promise<User> {
     return request<User>(this.config, {
-      path: '/v1/me',
+      path: "/v1/me",
       signal,
     });
   }
