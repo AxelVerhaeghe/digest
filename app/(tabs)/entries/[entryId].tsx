@@ -63,6 +63,7 @@ export default function Article() {
         author={data.author}
         publishedAt={data.published_at}
         readingTime={data.reading_time}
+        href={data.url}
       />
       <ThemedView style={styles.content}>
         <WebView

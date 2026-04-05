@@ -6,6 +6,8 @@ import { Fonts } from "@/constants/theme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { LinearGradient } from "expo-linear-gradient";
 import { formatDistanceToNow } from "date-fns";
+import { ExternalLink } from "@/components/navigation/external-link";
+import type { ExternalUrl } from "@/collections/schemas";
 
 const OVERLAP = 200;
 
@@ -16,6 +18,7 @@ type ArticleHeaderProps = {
   author: string | null;
   publishedAt: string;
   readingTime: number;
+  href: ExternalUrl;
 };
 
 export function ArticleHeader({
@@ -25,6 +28,7 @@ export function ArticleHeader({
   author,
   publishedAt,
   readingTime,
+  href,
 }: ArticleHeaderProps) {
   const surface = useThemeColor({}, "surface");
   const onSurface = useThemeColor({}, "onSurface");
@@ -53,9 +57,11 @@ export function ArticleHeader({
         >
           {category}
         </Badge>
-        <ThemedText type="title" style={{ color: textColor }}>
-          {title}
-        </ThemedText>
+        <ExternalLink href={href}>
+          <ThemedText type="title" style={{ color: textColor }}>
+            {title}
+          </ThemedText>
+        </ExternalLink>
         <View style={styles.metadata}>
           {author ? (
             <ThemedText

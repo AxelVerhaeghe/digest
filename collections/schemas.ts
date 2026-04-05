@@ -1,5 +1,19 @@
 import { z } from "zod";
 
+export type ExternalUrl = `${string}:${string}`;
+
+function isExternalUrl(val: unknown): val is ExternalUrl {
+  if (typeof val !== "string") return false;
+  try {
+    new URL(val);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const externalUrlSchema = z.custom<ExternalUrl>(isExternalUrl);
+
 export const entryStatusSchema = z.enum(["read", "unread", "removed"]);
 
 export const feedIconSchema = z.object({
@@ -69,7 +83,7 @@ export const entrySchema = z.object({
   user_id: z.number(),
   feed_id: z.number(),
   title: z.string(),
-  url: z.string(),
+  url: externalUrlSchema,
   comments_url: z.string(),
   author: z.string(),
   content: z.string(),
