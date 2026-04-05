@@ -5,14 +5,15 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { useFeeds } from "@/hooks/use-feeds";
 import { Link } from "expo-router";
+import { AllArticlesLink } from "@/components/category/all-articles-link";
 
 export default function HomeScreen() {
   const { data } = useFeeds();
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Welcome!</ThemedText>
+        <ThemedView style={styles.allArticlesLink}>
+          <AllArticlesLink unreadCount={10} />
         </ThemedView>
         {data.map((feed) => (
           <Link key={feed.id} href={`/feeds/${feed.id}`}>
@@ -30,10 +31,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 8,
   },
-  titleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  allArticlesLink: {
+    paddingBlockStart: 24,
+    paddingBlockEnd: 16,
   },
 });
