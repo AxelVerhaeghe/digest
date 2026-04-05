@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Zod schemas for TanStack DB collections.
@@ -8,11 +8,7 @@ import { z } from 'zod';
 // Miniflux API via the sync adapter bypasses schema validation.
 // ---------------------------------------------------------------------------
 
-// ---- Shared enums ---------------------------------------------------------
-
-export const entryStatusSchema = z.enum(['read', 'unread', 'removed']);
-
-// ---- Nested helpers -------------------------------------------------------
+export const entryStatusSchema = z.enum(["read", "unread", "removed"]);
 
 export const feedIconSchema = z.object({
   feed_id: z.number(),
@@ -37,8 +33,6 @@ export const enclosureSchema = z.object({
   size: z.number(),
   media_progression: z.number(),
 });
-
-// ---- Top-level collection schemas -----------------------------------------
 
 /**
  * Feed schema -- matches the shape returned by `GET /v1/feeds`.
@@ -98,9 +92,9 @@ export const entrySchema = z.object({
   enclosures: z.array(enclosureSchema).nullable(),
   feed: feedSchema,
   tags: z.array(z.string()).optional(),
+  /** Client-side derived field: extracted at sync time via `getCoverImage`. */
+  cover_image_url: z.string().nullable(),
 });
-
-// ---- Inferred types -------------------------------------------------------
 
 export type CategoryRow = z.infer<typeof categorySchema>;
 export type FeedRow = z.infer<typeof feedSchema>;

@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { useFeeds } from "@/hooks/use-feeds";
+import { Link } from "expo-router";
 
 export default function HomeScreen() {
   const { data } = useFeeds();
@@ -14,10 +15,12 @@ export default function HomeScreen() {
           <ThemedText type="title">Welcome!</ThemedText>
         </ThemedView>
         {data.map((feed) => (
-          <ThemedView key={feed.id}>
-            <ThemedText type="subtitle">{feed.title}</ThemedText>
-            <ThemedText>{feed.category.title}</ThemedText>
-          </ThemedView>
+          <Link key={feed.id} href={`/feeds/${feed.id}`}>
+            <ThemedView>
+              <ThemedText type="subtitle">{feed.title}</ThemedText>
+              <ThemedText>{feed.category.title}</ThemedText>
+            </ThemedView>
+          </Link>
         ))}
       </SafeAreaView>
     </ThemedView>
