@@ -1,13 +1,5 @@
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
-// Zod schemas for TanStack DB collections.
-//
-// These mirror the TypeScript types in `api/types.ts` but are used at runtime
-// to validate client-side mutations (insert / update). Data flowing *from* the
-// Miniflux API via the sync adapter bypasses schema validation.
-// ---------------------------------------------------------------------------
-
 export const entryStatusSchema = z.enum(["read", "unread", "removed"]);
 
 export const feedIconSchema = z.object({
@@ -99,3 +91,9 @@ export const entrySchema = z.object({
 export type CategoryRow = z.infer<typeof categorySchema>;
 export type FeedRow = z.infer<typeof feedSchema>;
 export type EntryRow = z.infer<typeof entrySchema>;
+
+/**
+ * Entry row without `content` — used by the list collection to avoid loading
+ * large HTML bodies into memory for every entry.
+ */
+export type EntryListRow = Omit<EntryRow, "content">;

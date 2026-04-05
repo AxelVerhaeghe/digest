@@ -1,89 +1,161 @@
 import { BasicIndex, createCollection } from "@tanstack/react-db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/expo-db-sqlite-persistence";
+import { parseLoadSubsetOptions } from "@tanstack/db";
+import type { SimpleComparison, ParsedOrderBy } from "@tanstack/db";
 
 import { api } from "@/api";
-import { queryClient } from "@/lib/query-client";
+import type { EntryQueryParams } from "@/api/types";
+import type { EntryListRow } from "@/collections/schemas";
+import { getCoverImage } from "@/lib/cover-image";
 import { createPersistence } from "@/lib/persistence";
-import { getCoverImage } from "@/hooks/use-entries";
-import type { EntryRow } from "@/collections/schemas";
+import { queryClient } from "@/lib/query-client";
 
-/** Number of entries to fetch per page during sync. */
-const PAGE_SIZE = 100;
-
-/**
- * Maximum number of entries to sync in total. Acts as a safety cap to
- * avoid unbounded fetching for accounts with very large histories.
- * Adjust as needed -- 5 000 entries is roughly 6-12 months for a
- * moderate number of subscriptions.
- */
-const MAX_ENTRIES = 5_000;
+/** Default page size when the live query doesn't specify a limit. */
+const DEFAULT_LIMIT = 50;
 
 /**
- * Fetch all entries from Miniflux by paginating through `GET /v1/entries`.
- *
- * Stops when either:
- * - All entries have been fetched (`offset >= total`), or
- * - The safety cap ({@link MAX_ENTRIES}) is reached, or
- * - The request is aborted via `signal`.
+ * Map a `SimpleComparison` filter's field path to a recognizable key.
+ * E.g. `["feed_id"]` → `"feed_id"`, `["feed", "category", "id"]` → `"feed.category.id"`.
  */
-async function fetchAllEntries(signal?: AbortSignal): Promise<EntryRow[]> {
-  const allEntries: EntryRow[] = [];
-  let offset = 0;
-  let total = Infinity;
-
-  while (offset < total && allEntries.length < MAX_ENTRIES) {
-    if (signal?.aborted) break;
-
-    const response = await api.getEntries(
-      {
-        order: "published_at",
-        direction: "desc",
-        limit: PAGE_SIZE,
-        offset,
-      },
-      signal,
-    );
-
-    total = response.total;
-    const enriched = response.entries.map((entry) => ({
-      ...entry,
-      cover_image_url: getCoverImage(entry.enclosures, entry.content),
-    }));
-    allEntries.push(...enriched);
-    offset += PAGE_SIZE;
-
-    // If we got fewer than PAGE_SIZE, we've exhausted the results.
-    if (response.entries.length < PAGE_SIZE) break;
-  }
-
-  return allEntries;
+function fieldKey(filter: SimpleComparison): string {
+  return filter.field.join(".");
 }
 
 /**
- * Entries collection.
+ * Map a `ParsedOrderBy` entry's field path to a Miniflux `order` param value.
+ * Only a subset of fields are supported by the Miniflux API.
+ */
+function toMinifluxOrder(sort: ParsedOrderBy): string | undefined {
+  const key = sort.field.join(".");
+  const mapping: Record<string, string> = {
+    published_at: "published_at",
+    id: "id",
+    status: "status",
+    "feed.category.title": "category_title",
+    "feed.category.id": "category_id",
+  };
+  return mapping[key];
+}
+
+/**
+ * Build Miniflux API query params and determine the correct endpoint from
+ * the parsed load subset options that TanStack DB passes via `ctx.meta`.
+ */
+function buildApiCall(
+  filters: SimpleComparison[],
+  sorts: ParsedOrderBy[],
+  limit?: number,
+): {
+  endpoint: "entries" | "feed" | "category";
+  feedId?: number;
+  categoryId?: number;
+  params: EntryQueryParams;
+} {
+  const params: EntryQueryParams = {
+    limit: limit ?? DEFAULT_LIMIT,
+  };
+
+  let endpoint: "entries" | "feed" | "category" = "entries";
+  let feedId: number | undefined;
+  let categoryId: number | undefined;
+
+  for (const filter of filters) {
+    const key = fieldKey(filter);
+    if (filter.operator !== "eq") continue;
+
+    switch (key) {
+      case "feed_id":
+        endpoint = "feed";
+        feedId = filter.value as number;
+        break;
+      case "feed.category.id":
+        endpoint = "category";
+        categoryId = filter.value as number;
+        break;
+      case "status":
+        params.status = filter.value as EntryQueryParams["status"];
+        break;
+      case "starred":
+        params.starred = filter.value as boolean;
+        break;
+    }
+  }
+
+  if (sorts.length > 0) {
+    const primary = sorts[0]!;
+    const order = toMinifluxOrder(primary);
+    if (order) {
+      params.order = order as EntryQueryParams["order"];
+      params.direction = primary.direction;
+    }
+  }
+
+  return { endpoint, feedId, categoryId, params };
+}
+
+/**
+ * Strip `content` from a Miniflux entry and derive `cover_image_url`.
+ * Returns an `EntryListRow` suitable for the list collection.
+ */
+function toListRow(entry: Record<string, unknown>): EntryListRow {
+  const { content, ...rest } = entry as Record<string, unknown> & {
+    content?: string;
+  };
+  return {
+    ...rest,
+    cover_image_url: getCoverImage((rest as EntryListRow).enclosures, content),
+  } as EntryListRow;
+}
+
+/**
+ * Entries list collection.
  *
- * Syncs with Miniflux `GET /v1/entries` using paginated fetching and
- * persists locally in SQLite. The full entry set is fetched on each sync
- * so the local store is always complete (up to {@link MAX_ENTRIES}).
+ * Uses `syncMode: "on-demand"` so only entries matching active live queries
+ * are loaded from SQLite into memory. The `queryFn` maps TanStack DB's
+ * parsed predicates to the appropriate Miniflux API endpoint and params.
  *
- * Mutation handlers for read/unread and bookmark toggling will be added
- * in Phase 3 (optimistic mutations).
+ * `content` is stripped from entries to avoid loading large HTML bodies
+ * into memory. Use `entryDetailCollection` to fetch full entry content.
  */
 const queryOptions = queryCollectionOptions({
   id: "entries",
   queryKey: ["entries"],
   queryClient,
-  getKey: (entry: EntryRow) => entry.id,
-  queryFn: async ({ signal }): Promise<EntryRow[]> => {
-    return fetchAllEntries(signal);
+  syncMode: "on-demand",
+  getKey: (entry: EntryListRow) => entry.id,
+  queryFn: async (ctx): Promise<EntryListRow[]> => {
+    const { filters, sorts, limit } = parseLoadSubsetOptions(
+      ctx.meta?.loadSubsetOptions,
+    );
+
+    const { endpoint, feedId, categoryId, params } = buildApiCall(
+      filters,
+      sorts,
+      limit,
+    );
+
+    let res;
+    switch (endpoint) {
+      case "feed":
+        res = await api.getFeedEntries(feedId!, params, ctx.signal);
+        break;
+      case "category":
+        res = await api.getCategoryEntries(categoryId!, params, ctx.signal);
+        break;
+      default:
+        res = await api.getEntries(params, ctx.signal);
+        break;
+    }
+
+    return res.entries.map(toListRow);
   },
 });
 
 const persistedOptions = persistedCollectionOptions({
   ...queryOptions,
-  persistence: createPersistence<EntryRow, number>(),
-  schemaVersion: 2,
+  persistence: createPersistence<EntryListRow, number>(),
+  schemaVersion: 4,
 });
 
 export const entriesCollection = createCollection({

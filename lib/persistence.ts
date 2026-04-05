@@ -1,8 +1,8 @@
-import 'react-native-random-uuid';
+import "react-native-random-uuid";
 
-import { openDatabaseSync } from 'expo-sqlite';
-import { createExpoSQLitePersistence } from '@tanstack/expo-db-sqlite-persistence';
-import type { ExpoSQLiteDatabaseLike } from '@tanstack/expo-db-sqlite-persistence';
+import { openDatabaseSync } from "expo-sqlite";
+import { createExpoSQLitePersistence } from "@tanstack/expo-db-sqlite-persistence";
+import type { ExpoSQLiteDatabaseLike } from "@tanstack/expo-db-sqlite-persistence";
 
 /**
  * Shared SQLite database used by all TanStack DB collections for local
@@ -21,7 +21,9 @@ import type { ExpoSQLiteDatabaseLike } from '@tanstack/expo-db-sqlite-persistenc
  * At runtime the APIs are fully compatible — the persistence layer always
  * passes params and ignores the transaction return value.
  */
-const database = openDatabaseSync('digest.db') as unknown as ExpoSQLiteDatabaseLike;
+export const database = openDatabaseSync(
+  "digest.db",
+) as unknown as ExpoSQLiteDatabaseLike;
 
 /**
  * Create a typed persistence adapter for a specific collection type.

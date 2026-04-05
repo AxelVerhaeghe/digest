@@ -2,60 +2,10 @@ import { useLiveInfiniteQuery, useLiveQuery } from "@tanstack/react-db";
 import { eq } from "@tanstack/db";
 
 import { entriesCollection } from "@/collections/entries";
-import type { Enclosure } from "@/api/types";
-
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
+import { entryDetailCollection } from "@/collections/entry-details";
 
 /** Number of entries loaded per page in infinite-scroll lists. */
 const PAGE_SIZE = 20;
-
-// ---------------------------------------------------------------------------
-// Cover image helper
-// ---------------------------------------------------------------------------
-
-const IMAGE_MIME_PREFIX = "image/";
-
-/**
- * Regex to extract the `src` attribute from the first `<img>` tag in an HTML
- * string. Handles both single- and double-quoted attribute values.
- */
-const FIRST_IMG_SRC_RE = /<img\s[^>]*?src=["']([^"']+)["']/i;
-
-/**
- * Extract a cover image URL from an entry.
- *
- * Resolution order:
- * 1. First enclosure with an `image/*` MIME type.
- * 2. First `<img src="…">` found in the entry's HTML content.
- *
- * Returns `null` when neither source yields an image.
- */
-export function getCoverImage(
-  enclosures: Enclosure[] | null | undefined,
-  content?: string | null,
-): string | null {
-  // 1. Prefer an explicit image enclosure.
-  if (enclosures) {
-    const img = enclosures.find((e) =>
-      e.mime_type.startsWith(IMAGE_MIME_PREFIX),
-    );
-    if (img) return img.url;
-  }
-
-  // 2. Fall back to the first <img> in the HTML content.
-  if (content) {
-    const match = FIRST_IMG_SRC_RE.exec(content);
-    if (match?.[1]) return match[1];
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Infinite-scroll list hooks
-// ---------------------------------------------------------------------------
 
 /**
  * All entries from the local store, ordered newest-first.
@@ -202,15 +152,13 @@ export function useStarredEntries() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Single entry lookup
-// ---------------------------------------------------------------------------
-
 /**
  * Look up a single entry by its Miniflux ID.
  *
  * Returns the full entry row including `content` (which the list hooks
- * intentionally omit to keep list renders lightweight).
+ * intentionally omit to keep list renders lightweight). Fetches from the
+ * separate `entryDetailCollection` so the large HTML body is only loaded
+ * when actually viewing an entry.
  *
  * @param entryId - The Miniflux entry ID, or `null`/`undefined` to disable
  *   the query (useful when the ID isn't available yet).
@@ -220,7 +168,7 @@ export function useEntry(entryId: number | null | undefined) {
     (q) =>
       entryId != null
         ? q
-            .from({ entry: entriesCollection })
+            .from({ entry: entryDetailCollection })
             .where(({ entry }) => eq(entry.id, entryId))
             .select(({ entry }) => ({
               id: entry.id,

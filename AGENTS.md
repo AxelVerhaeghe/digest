@@ -185,6 +185,11 @@ Within each group, imports are sorted alphabetically. The VS Code settings enfor
 - 2-space indentation.
 - Trailing commas in multi-line structures.
 - JSX closing brackets on the same line as the last prop when multi-line.
+- **No decorative comment separators.** Do not add lines like
+  `// ---------------------------------------------------------------------------` or
+  `// ===== Section =====` to visually divide sections in a file. Use JSDoc comments on
+  the declarations themselves to document purpose; the code structure should be
+  self-explanatory without ASCII-art dividers.
 
 ### Error Handling
 
