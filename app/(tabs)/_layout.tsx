@@ -27,6 +27,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          title: "All",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="book.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="feeds/index"
+        options={{
           title: "Feeds",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="list.bullet" color={color} />
@@ -34,12 +43,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="feeds/[feedId]"
         options={{
-          title: "Explore",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
-          ),
+          href: null,
         }}
       />
     </Tabs>
