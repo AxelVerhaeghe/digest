@@ -30,6 +30,7 @@ export function useEntries() {
           feed_id: entry.feed_id,
           feed: entry.feed,
           cover_image_url: entry.cover_image_url,
+          category: entry.feed.category.title,
         })),
     { pageSize: PAGE_SIZE },
   );
