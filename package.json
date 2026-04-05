@@ -12,6 +12,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo-google-fonts/manrope": "^0.4.2",
     "@expo-google-fonts/newsreader": "^0.4.1",
     "@expo/vector-icons": "15.1.1",
     "@react-navigation/bottom-tabs": "7.15.9",
@@ -22,6 +23,7 @@
     "@tanstack/query-db-collection": "1.0.33",
     "@tanstack/react-db": "0.1.80",
     "@tanstack/react-query": "5.96.2",
+    "date-fns": "^4.1.0",
     "expo": "54.0.33",
     "expo-background-fetch": "14.0.9",
     "expo-constants": "18.0.13",

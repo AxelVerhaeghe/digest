@@ -50,13 +50,13 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.families.newsreaderSemiBold,
   },
   title: {
-    fontSize: 32,
+    fontSize: 48,
     lineHeight: 32,
     fontFamily: Fonts.families.newsreaderBoldItalic,
   },
   subtitle: {
-    fontSize: 20,
-    fontFamily: Fonts.families.newsreaderBold,
+    fontSize: 30,
+    fontFamily: Fonts.families.newsreaderBoldItalic,
   },
   link: {
     lineHeight: 30,

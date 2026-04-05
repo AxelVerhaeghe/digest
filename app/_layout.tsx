@@ -39,7 +39,10 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [fontsLoaded, fontError] = useFonts(Fonts.newsreader);
+  const [fontsLoaded, fontError] = useFonts({
+    ...Fonts.newsreader,
+    ...Fonts.manrope,
+  });
 
   useEffect(() => {
     if (fontsLoaded || fontError) {

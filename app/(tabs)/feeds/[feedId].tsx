@@ -28,6 +28,9 @@ export default function Feed() {
               coverImageUrl={item.cover_image_url}
               title={item.title}
               author={item.author}
+              category={item.category}
+              feedName={item.feed.title}
+              publishedAt={item.published_at}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -43,6 +46,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    gap: 12,
+    gap: 64,
   },
 });

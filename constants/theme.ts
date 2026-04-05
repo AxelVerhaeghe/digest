@@ -16,6 +16,12 @@ import {
   Newsreader_700Bold,
   Newsreader_700Bold_Italic,
 } from "@expo-google-fonts/newsreader";
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+} from "@expo-google-fonts/manrope";
 import { Platform } from "react-native";
 
 /**
@@ -108,6 +114,17 @@ export const Fonts = {
   } as Record<string, FontSource>,
 
   /**
+   * Font map to pass to `useFonts()` for loading Manrope variants.
+   * Manrope is the sans-serif reserved for label scales (DESIGN.md §3).
+   */
+  manrope: {
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+  } as Record<string, FontSource>,
+
+  /**
    * Resolved font family names for use in styles.
    */
   families: {
@@ -117,6 +134,11 @@ export const Fonts = {
     newsreaderSemiBold: "Newsreader_600SemiBold",
     newsreaderBold: "Newsreader_700Bold",
     newsreaderBoldItalic: "Newsreader_700Bold_Italic",
+    /** Sans-serif for label scales */
+    manrope: "Manrope_400Regular",
+    manropeMedium: "Manrope_500Medium",
+    manropeSemiBold: "Manrope_600SemiBold",
+    manropeBold: "Manrope_700Bold",
   },
 
   /**
