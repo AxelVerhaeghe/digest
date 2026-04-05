@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 48,
-    lineHeight: 32,
+    lineHeight: 52.8,
     fontFamily: Fonts.families.newsreaderBoldItalic,
   },
   subtitle: {

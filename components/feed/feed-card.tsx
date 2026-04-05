@@ -6,6 +6,7 @@ import { DotSeparator } from "@/components/ui/dot-separator";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { formatDistanceToNow } from "date-fns";
+import { Link } from "expo-router";
 
 interface Props {
   coverImageUrl: string | null;
@@ -14,6 +15,7 @@ interface Props {
   category: string;
   feedName: string;
   publishedAt: string;
+  id: number;
 }
 
 export function FeedCard({
@@ -23,6 +25,7 @@ export function FeedCard({
   category,
   feedName,
   publishedAt,
+  id,
 }: Props) {
   const publishDate = formatDistanceToNow(new Date(publishedAt), {
     addSuffix: true,
@@ -30,21 +33,23 @@ export function FeedCard({
   const metadata = [feedName, author, publishDate].filter(Boolean);
 
   return (
-    <ThemedView style={styles.container}>
-      <Badge>{category}</Badge>
-      {!!coverImageUrl && <CoverImage url={coverImageUrl} />}
-      <ThemedText type="subtitle">{title}</ThemedText>
-      <ThemedView style={styles.metadata}>
-        {metadata
-          .flatMap((value, i) => [
-            i > 0 && <DotSeparator key={`dot-${i}`} />,
-            <Badge key={value} type="muted">
-              {value}
-            </Badge>,
-          ])
-          .filter(Boolean)}
+    <Link href={`/entries/${id}`}>
+      <ThemedView style={styles.container}>
+        <Badge>{category}</Badge>
+        {!!coverImageUrl && <CoverImage url={coverImageUrl} />}
+        <ThemedText type="subtitle">{title}</ThemedText>
+        <ThemedView style={styles.metadata}>
+          {metadata
+            .flatMap((value, i) => [
+              i > 0 && <DotSeparator key={`dot-${i}`} />,
+              <Badge key={value} type="muted">
+                {value}
+              </Badge>,
+            ])
+            .filter(Boolean)}
+        </ThemedView>
       </ThemedView>
-    </ThemedView>
+    </Link>
   );
 }
 

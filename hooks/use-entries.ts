@@ -171,6 +171,7 @@ export function useEntry(entryId: number | null | undefined) {
         ? q
             .from({ entry: entryDetailCollection })
             .where(({ entry }) => eq(entry.id, entryId))
+            .findOne()
             .select(({ entry }) => ({
               id: entry.id,
               title: entry.title,
@@ -185,7 +186,9 @@ export function useEntry(entryId: number | null | undefined) {
               feed_id: entry.feed_id,
               feed: entry.feed,
               enclosures: entry.enclosures,
+              cover_image_url: entry.cover_image_url,
               tags: entry.tags,
+              category: entry.feed.category.title,
             }))
         : undefined,
     [entryId],

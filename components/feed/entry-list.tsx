@@ -29,6 +29,7 @@ function renderItem({ item }: ListRenderItemInfo<EntryListEntry>) {
       category={item.category}
       feedName={item.feed.title}
       publishedAt={item.published_at}
+      id={item.id}
     />
   );
 }
