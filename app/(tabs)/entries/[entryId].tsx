@@ -59,11 +59,13 @@ export default function Article() {
       <ArticleHeader
         title={data.title}
         category={data.category}
+        feedName={data.feed.title}
         hasImage={hasCoverImage}
         author={data.author}
         publishedAt={data.published_at}
         readingTime={data.reading_time}
         href={data.url}
+        iconData={data.icon.data}
       />
       <ThemedView style={styles.content}>
         <WebView

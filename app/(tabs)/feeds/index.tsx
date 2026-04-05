@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { Image, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AllArticlesLink } from "@/components/category/all-articles-link";
@@ -8,11 +8,14 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { useCategories } from "@/hooks/use-categories";
 import { useFeeds } from "@/hooks/use-feeds";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import { Link } from "expo-router";
 
 export default function FeedsScreen() {
   const { data: categories } = useCategories();
   const { data: feeds } = useFeeds();
+  const placeholderBg = useThemeColor({}, "surfaceContainerHigh");
+  const placeholderFg = useThemeColor({}, "onSurfaceVariant");
 
   const feedsByCategory = useMemo(() => {
     const map = new Map<number, typeof feeds>();
@@ -46,6 +49,31 @@ export default function FeedsScreen() {
                   {categoryFeeds.map((feed) => (
                     <Link key={feed.id} href={`/feeds/${feed.id}`}>
                       <ThemedView style={styles.feedItem}>
+                        {feed.icon.data ? (
+                          <Image
+                            source={{
+                              uri: `data:${feed.icon.data}`,
+                            }}
+                            style={styles.feedIcon}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.feedIcon,
+                              styles.feedIconPlaceholder,
+                              { backgroundColor: placeholderBg },
+                            ]}
+                          >
+                            <ThemedText
+                              style={[
+                                styles.feedIconLetter,
+                                { color: placeholderFg },
+                              ]}
+                            >
+                              {feed.title.charAt(0).toUpperCase()}
+                            </ThemedText>
+                          </View>
+                        )}
                         <ThemedText>{feed.title}</ThemedText>
                       </ThemedView>
                     </Link>
@@ -75,6 +103,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   feedItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     paddingVertical: 8,
+  },
+  feedIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+  },
+  feedIconPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feedIconLetter: {
+    fontSize: 11,
+    fontWeight: "600",
+    lineHeight: 20,
   },
 });

@@ -21,6 +21,12 @@ export const feedIconSchema = z.object({
   icon_id: z.number(),
 });
 
+export const iconSchema = z.object({
+  id: z.number(),
+  data: z.string(),
+  mime_type: z.string(),
+});
+
 export const categorySchema = z.object({
   id: z.number(),
   user_id: z.number(),
@@ -105,6 +111,7 @@ export const entrySchema = z.object({
 export type CategoryRow = z.infer<typeof categorySchema>;
 export type FeedRow = z.infer<typeof feedSchema>;
 export type EntryRow = z.infer<typeof entrySchema>;
+export type IconRow = z.infer<typeof iconSchema>;
 
 /**
  * Entry row without `content` — used by the list collection to avoid loading

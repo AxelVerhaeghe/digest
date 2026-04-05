@@ -1,8 +1,9 @@
-import { useLiveInfiniteQuery, useLiveQuery } from "@tanstack/react-db";
 import { eq } from "@tanstack/db";
+import { useLiveInfiniteQuery, useLiveQuery } from "@tanstack/react-db";
 
 import { entriesCollection } from "@/collections/entries";
 import { entryDetailCollection } from "@/collections/entry-details";
+import { iconsCollection } from "@/collections/icons";
 
 /** Number of entries loaded per page in infinite-scroll lists. */
 const PAGE_SIZE = 20;
@@ -17,8 +18,11 @@ export function useEntries() {
     (q) =>
       q
         .from({ entry: entriesCollection })
+        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
+          eq(entry.feed.icon!.icon_id, icon.id),
+        )
         .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry }) => ({
+        .select(({ entry, icon }) => ({
           id: entry.id,
           title: entry.title,
           url: entry.url,
@@ -31,6 +35,10 @@ export function useEntries() {
           feed: entry.feed,
           cover_image_url: entry.cover_image_url,
           category: entry.feed.category.title,
+          icon: {
+            data: icon.data,
+            mime_type: icon.mime_type,
+          },
         })),
     { pageSize: PAGE_SIZE },
   );
@@ -46,9 +54,12 @@ export function useFeedEntries(feedId: number) {
     (q) =>
       q
         .from({ entry: entriesCollection })
+        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
+          eq(entry.feed.icon!.icon_id, icon.id),
+        )
         .where(({ entry }) => eq(entry.feed_id, feedId))
         .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry }) => ({
+        .select(({ entry, icon }) => ({
           id: entry.id,
           title: entry.title,
           url: entry.url,
@@ -61,6 +72,10 @@ export function useFeedEntries(feedId: number) {
           feed: entry.feed,
           cover_image_url: entry.cover_image_url,
           category: entry.feed.category.title,
+          icon: {
+            data: icon.data,
+            mime_type: icon.mime_type,
+          },
         })),
     { pageSize: PAGE_SIZE },
     [feedId],
@@ -79,9 +94,12 @@ export function useCategoryEntries(categoryId: number) {
     (q) =>
       q
         .from({ entry: entriesCollection })
+        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
+          eq(entry.feed.icon!.icon_id, icon.id),
+        )
         .where(({ entry }) => eq(entry.feed.category.id, categoryId))
         .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry }) => ({
+        .select(({ entry, icon }) => ({
           id: entry.id,
           title: entry.title,
           url: entry.url,
@@ -93,6 +111,10 @@ export function useCategoryEntries(categoryId: number) {
           feed_id: entry.feed_id,
           feed: entry.feed,
           cover_image_url: entry.cover_image_url,
+          icon: {
+            data: icon.data,
+            mime_type: icon.mime_type,
+          },
         })),
     { pageSize: PAGE_SIZE },
     [categoryId],
@@ -107,9 +129,12 @@ export function useUnreadEntries() {
     (q) =>
       q
         .from({ entry: entriesCollection })
+        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
+          eq(entry.feed.icon!.icon_id, icon.id),
+        )
         .where(({ entry }) => eq(entry.status, "unread"))
         .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry }) => ({
+        .select(({ entry, icon }) => ({
           id: entry.id,
           title: entry.title,
           url: entry.url,
@@ -121,6 +146,10 @@ export function useUnreadEntries() {
           feed_id: entry.feed_id,
           feed: entry.feed,
           cover_image_url: entry.cover_image_url,
+          icon: {
+            data: icon.data,
+            mime_type: icon.mime_type,
+          },
         })),
     { pageSize: PAGE_SIZE },
   );
@@ -134,9 +163,12 @@ export function useStarredEntries() {
     (q) =>
       q
         .from({ entry: entriesCollection })
+        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
+          eq(entry.feed.icon!.icon_id, icon.id),
+        )
         .where(({ entry }) => eq(entry.starred, true))
         .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry }) => ({
+        .select(({ entry, icon }) => ({
           id: entry.id,
           title: entry.title,
           url: entry.url,
@@ -148,6 +180,10 @@ export function useStarredEntries() {
           feed_id: entry.feed_id,
           feed: entry.feed,
           cover_image_url: entry.cover_image_url,
+          icon: {
+            data: icon.data,
+            mime_type: icon.mime_type,
+          },
         })),
     { pageSize: PAGE_SIZE },
   );
@@ -170,9 +206,12 @@ export function useEntry(entryId: number | null | undefined) {
       entryId != null
         ? q
             .from({ entry: entryDetailCollection })
+            .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
+              eq(entry.feed.icon!.icon_id, icon.id),
+            )
             .where(({ entry }) => eq(entry.id, entryId))
             .findOne()
-            .select(({ entry }) => ({
+            .select(({ entry, icon }) => ({
               id: entry.id,
               title: entry.title,
               url: entry.url,
@@ -189,6 +228,10 @@ export function useEntry(entryId: number | null | undefined) {
               cover_image_url: entry.cover_image_url,
               tags: entry.tags,
               category: entry.feed.category.title,
+              icon: {
+                data: icon.data,
+                mime_type: icon.mime_type,
+              },
             }))
         : undefined,
     [entryId],
