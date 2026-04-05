@@ -21,7 +21,12 @@ export function Collapsible({
   const theme = useColorScheme() ?? "light";
 
   return (
-    <ThemedView>
+    <ThemedView
+      style={[
+        styles.wrapper,
+        { borderBottomColor: Colors[theme].outlineVariant },
+      ]}
+    >
       <TouchableOpacity
         style={styles.heading}
         onPress={() => setIsOpen((value) => !value)}
@@ -46,6 +51,9 @@ export function Collapsible({
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   heading: {
     flexDirection: "row",
     alignItems: "center",
