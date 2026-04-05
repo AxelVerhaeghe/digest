@@ -70,7 +70,7 @@ export const Colors = {
   /* ------------------------------------------------------------------ */
   dark: {
     // Surfaces — tonal layers (Layer 0 → 3)
-    surface: "#0b0f0e",
+    surface: "#0f1413",
     surfaceDim: "#0b0f0e",
     surfaceContainerLowest: "#060908",
     surfaceContainerLow: "#111614",
