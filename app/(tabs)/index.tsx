@@ -1,31 +1,15 @@
-import { Image } from "expo-image";
 import { StyleSheet } from "react-native";
 
-import { HelloWave } from "@/components/hello-wave";
-import ParallaxScrollView from "@/components/parallax-scroll-view";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { Colors } from "@/constants/theme";
+import { ThemedText } from "@/components/ui/themed-text";
+import { ThemedView } from "@/components/ui/themed-view";
 import { useFeeds } from "@/hooks/use-feeds";
 
 export default function HomeScreen() {
   const { data } = useFeeds();
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{
-        light: Colors.light.surfaceContainerLow,
-        dark: Colors.dark.surfaceContainerLow,
-      }}
-      headerImage={
-        <Image
-          source={require("@/assets/images/partial-react-logo.png")}
-          style={styles.reactLogo}
-        />
-      }
-    >
+    <>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
       </ThemedView>
       {data.map((feed) => (
         <ThemedView key={feed.id}>
@@ -33,7 +17,7 @@ export default function HomeScreen() {
           <ThemedText>{feed.category.title}</ThemedText>
         </ThemedView>
       ))}
-    </ParallaxScrollView>
+    </>
   );
 }
 

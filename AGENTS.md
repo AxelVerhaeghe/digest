@@ -28,21 +28,21 @@ The React Compiler experiment is enabled. New Architecture is enabled.
 The backend is a Miniflux instance (https://miniflux.app/docs/api.html). Authentication
 is via API token passed in the `X-Auth-Token` header. Key endpoints:
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/v1/feeds` | List subscribed feeds |
-| GET | `/v1/feeds/{id}` | Get a single feed |
-| GET | `/v1/feeds/{id}/entries` | Entries for a specific feed |
-| POST | `/v1/feeds` | Subscribe to a new feed |
-| PUT | `/v1/feeds/{id}` | Update feed settings |
-| DELETE | `/v1/feeds/{id}` | Unsubscribe from a feed |
-| GET | `/v1/categories` | List categories |
-| GET | `/v1/entries` | List entries (supports filters) |
-| GET | `/v1/entries/{id}` | Get a single entry |
-| PUT | `/v1/entries` | Batch update entry status |
-| PUT | `/v1/entries/{id}/bookmark` | Toggle starred/bookmark |
-| GET | `/v1/entries?status=unread` | Unread entries |
-| GET | `/v1/entries?starred=true` | Starred entries |
+| Method | Endpoint                    | Purpose                         |
+| ------ | --------------------------- | ------------------------------- |
+| GET    | `/v1/feeds`                 | List subscribed feeds           |
+| GET    | `/v1/feeds/{id}`            | Get a single feed               |
+| GET    | `/v1/feeds/{id}/entries`    | Entries for a specific feed     |
+| POST   | `/v1/feeds`                 | Subscribe to a new feed         |
+| PUT    | `/v1/feeds/{id}`            | Update feed settings            |
+| DELETE | `/v1/feeds/{id}`            | Unsubscribe from a feed         |
+| GET    | `/v1/categories`            | List categories                 |
+| GET    | `/v1/entries`               | List entries (supports filters) |
+| GET    | `/v1/entries/{id}`          | Get a single entry              |
+| PUT    | `/v1/entries`               | Batch update entry status       |
+| PUT    | `/v1/entries/{id}/bookmark` | Toggle starred/bookmark         |
+| GET    | `/v1/entries?status=unread` | Unread entries                  |
+| GET    | `/v1/entries?starred=true`  | Starred entries                 |
 
 Entries support query params: `status`, `direction`, `order`, `limit`, `offset`,
 `after`, `before`, `category_id`, `starred`, `search`.
@@ -78,6 +78,7 @@ npm install --save-dev jest @testing-library/react-native jest-expo
 ```
 
 Then add to `package.json`:
+
 ```json
 {
   "scripts": {
@@ -104,16 +105,17 @@ app/                    # Expo Router file-based routes
     index.tsx            #     Home tab
     explore.tsx          #     Explore tab
 components/             # Reusable UI components
-  ui/                   #   Primitive/base UI components
+  ui/                   #   Generic primitives (no app domain knowledge)
     collapsible.tsx
-    icon-symbol.tsx     #   Android/web fallback (MaterialIcons)
-    icon-symbol.ios.tsx #   iOS-specific (SF Symbols)
-  external-link.tsx
-  haptic-tab.tsx
-  hello-wave.tsx
-  parallax-scroll-view.tsx
-  themed-text.tsx
-  themed-view.tsx
+    icon-symbol.tsx     #     Android/web fallback (MaterialIcons)
+    icon-symbol.ios.tsx #     iOS-specific (SF Symbols)
+    themed-text.tsx     #     Theme-aware Text wrapper
+    themed-view.tsx     #     Theme-aware View wrapper
+  layout/               #   App shell / structural components
+    haptic-tab.tsx
+    parallax-scroll-view.tsx
+  navigation/           #   Navigation-related components
+    external-link.tsx
 constants/              # Shared constants
   theme.ts              #   Colors and Fonts (light/dark mode)
 hooks/                  # Custom React hooks
@@ -138,24 +140,25 @@ scripts/                # Utility scripts
 ### Imports
 
 Imports are organized in two groups separated by a blank line:
-1. **External packages** (react, react-native, expo-*, @react-navigation/*)
-2. **Internal modules** using `@/` alias (@/components/*, @/hooks/*, @/constants/*)
+
+1. **External packages** (react, react-native, expo-_, @react-navigation/_)
+2. **Internal modules** using `@/` alias (@/components/_, @/hooks/_, @/constants/\*)
 
 Within each group, imports are sorted alphabetically. The VS Code settings enforce
 `source.organizeImports` and `source.sortMembers` on save.
 
 ### Naming Conventions
 
-| Item | Convention | Example |
-|---|---|---|
-| Files (components, hooks) | kebab-case | `themed-text.tsx`, `use-color-scheme.ts` |
-| React components | PascalCase | `ThemedText`, `ParallaxScrollView` |
-| Hooks | camelCase with `use` prefix | `useColorScheme`, `useThemeColor` |
-| Constants | PascalCase for objects | `Colors`, `Fonts` |
-| Local variables | camelCase | `colorScheme`, `headerAnimatedStyle` |
-| Types/Interfaces | PascalCase | `ThemedTextProps`, `IconSymbolName` |
-| StyleSheet keys | camelCase | `titleContainer`, `stepContainer` |
-| Platform files | `name.platform.tsx` | `icon-symbol.ios.tsx`, `use-color-scheme.web.ts` |
+| Item                      | Convention                  | Example                                          |
+| ------------------------- | --------------------------- | ------------------------------------------------ |
+| Files (components, hooks) | kebab-case                  | `themed-text.tsx`, `use-color-scheme.ts`         |
+| React components          | PascalCase                  | `ThemedText`, `ParallaxScrollView`               |
+| Hooks                     | camelCase with `use` prefix | `useColorScheme`, `useThemeColor`                |
+| Constants                 | PascalCase for objects      | `Colors`, `Fonts`                                |
+| Local variables           | camelCase                   | `colorScheme`, `headerAnimatedStyle`             |
+| Types/Interfaces          | PascalCase                  | `ThemedTextProps`, `IconSymbolName`              |
+| StyleSheet keys           | camelCase                   | `titleContainer`, `stepContainer`                |
+| Platform files            | `name.platform.tsx`         | `icon-symbol.ios.tsx`, `use-color-scheme.web.ts` |
 
 ### Component Patterns
 
@@ -206,14 +209,14 @@ Within each group, imports are sorted alphabetically. The VS Code settings enfor
 
 ## Key Dependencies
 
-| Package | Purpose |
-|---|---|
-| `expo-router` | File-based routing |
-| `@react-navigation/*` | Navigation primitives (tabs, stack) |
-| `react-native-reanimated` | Animations |
-| `react-native-gesture-handler` | Gesture handling |
-| `expo-haptics` | Haptic feedback (iOS) |
-| `expo-image` | Optimized image component |
-| `expo-web-browser` | In-app browser for external links |
-| `expo-symbols` | Native SF Symbols (iOS) |
-| `@expo/vector-icons` | Material Icons fallback (Android/web) |
+| Package                        | Purpose                               |
+| ------------------------------ | ------------------------------------- |
+| `expo-router`                  | File-based routing                    |
+| `@react-navigation/*`          | Navigation primitives (tabs, stack)   |
+| `react-native-reanimated`      | Animations                            |
+| `react-native-gesture-handler` | Gesture handling                      |
+| `expo-haptics`                 | Haptic feedback (iOS)                 |
+| `expo-image`                   | Optimized image component             |
+| `expo-web-browser`             | In-app browser for external links     |
+| `expo-symbols`                 | Native SF Symbols (iOS)               |
+| `@expo/vector-icons`           | Material Icons fallback (Android/web) |
