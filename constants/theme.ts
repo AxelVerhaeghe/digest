@@ -1,53 +1,150 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Material Design 3 color tokens derived from the editorial design system (DESIGN.md).
+ *
+ * The dark palette is the canonical "Silent Curator" theme — near-black charcoal
+ * surfaces with a living forest-green undertone. Light palette is a placeholder
+ * that mirrors the dark token names; replace the values when ready.
  */
 
-import { Platform } from 'react-native';
+import type { FontSource } from "expo-font";
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+import {
+  Newsreader_400Regular,
+  Newsreader_400Regular_Italic,
+  Newsreader_500Medium,
+  Newsreader_600SemiBold,
+  Newsreader_700Bold,
+  Newsreader_700Bold_Italic,
+} from "@expo-google-fonts/newsreader";
+import { Platform } from "react-native";
 
+/**
+ * MD3 color tokens, keyed by light / dark scheme.
+ *
+ * Token naming follows the Material Design 3 tonal-palette convention:
+ *   surface, onSurface, primary, onPrimary, primaryContainer, …
+ */
 export const Colors = {
+  /* ------------------------------------------------------------------ */
+  /*  Light — placeholder (mirrors dark token names, replace later)      */
+  /* ------------------------------------------------------------------ */
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    // Surfaces
+    surface: "#f5f8f7",
+    surfaceDim: "#d9dedc",
+    surfaceContainerLowest: "#ffffff",
+    surfaceContainerLow: "#f0f4f2",
+    surfaceContainer: "#eaeeec",
+    surfaceContainerHigh: "#e4e8e6",
+    surfaceContainerHighest: "#dee3e0",
+
+    // Primary
+    primary: "#3a6b53",
+    onPrimary: "#ffffff",
+    primaryContainer: "#46564e",
+    onPrimaryContainer: "#d5e8dd",
+
+    // Secondary
+    secondaryContainer: "#cdd8d2",
+    onSecondaryContainer: "#3a4440",
+
+    // Text
+    onSurface: "#191c1b",
+    onSurfaceVariant: "#414a47",
+
+    // Utility
+    outlineVariant: "#c0c9c4",
+    inverseSurface: "#2e3130",
+    inverseOnSurface: "#eff1ef",
+    error: "#ba1a1a",
   },
+
+  /* ------------------------------------------------------------------ */
+  /*  Dark — canonical editorial palette from DESIGN.md                  */
+  /* ------------------------------------------------------------------ */
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    // Surfaces — tonal layers (Layer 0 → 3)
+    surface: "#0b0f0e",
+    surfaceDim: "#0b0f0e",
+    surfaceContainerLowest: "#060908",
+    surfaceContainerLow: "#111614",
+    surfaceContainer: "#1b211f",
+    surfaceContainerHigh: "#252b29",
+    surfaceContainerHighest: "#303634",
+
+    // Primary
+    primary: "#b9cbc0",
+    onPrimary: "#34443c",
+    primaryContainer: "#46564e",
+    onPrimaryContainer: "#d5e8dd",
+
+    // Secondary
+    secondaryContainer: "#3a4440",
+    onSecondaryContainer: "#c4cec9",
+
+    // Text
+    onSurface: "#dee7e4",
+    onSurfaceVariant: "#8a9691",
+
+    // Utility
+    outlineVariant: "#414a47",
+    inverseSurface: "#dee7e4",
+    inverseOnSurface: "#1b211f",
+    error: "#cf6679",
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+export const Fonts = {
+  /**
+   * Font map to pass to `useFonts()` for loading Newsreader variants.
+   */
+  newsreader: {
+    Newsreader_400Regular,
+    Newsreader_400Regular_Italic,
+    Newsreader_500Medium,
+    Newsreader_600SemiBold,
+    Newsreader_700Bold,
+    Newsreader_700Bold_Italic,
+  } as Record<string, FontSource>,
+
+  /**
+   * Resolved font family names for use in styles.
+   */
+  families: {
+    newsreader: "Newsreader_400Regular",
+    newsreaderItalic: "Newsreader_400Regular_Italic",
+    newsreaderMedium: "Newsreader_500Medium",
+    newsreaderSemiBold: "Newsreader_600SemiBold",
+    newsreaderBold: "Newsreader_700Bold",
+    newsreaderBoldItalic: "Newsreader_700Bold_Italic",
   },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+
+  /**
+   * Platform-specific system font families.
+   */
+  system: Platform.select({
+    ios: {
+      /** iOS `UIFontDescriptorSystemDesignDefault` */
+      sans: "system-ui",
+      /** iOS `UIFontDescriptorSystemDesignSerif` */
+      serif: "ui-serif",
+      /** iOS `UIFontDescriptorSystemDesignRounded` */
+      rounded: "ui-rounded",
+      /** iOS `UIFontDescriptorSystemDesignMonospaced` */
+      mono: "ui-monospace",
+    },
+    default: {
+      sans: "normal",
+      serif: "serif",
+      rounded: "normal",
+      mono: "monospace",
+    },
+    web: {
+      sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+      serif: "Georgia, 'Times New Roman', serif",
+      rounded:
+        "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
+      mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    },
+  }),
+};

@@ -1,25 +1,21 @@
 import { Image } from "expo-image";
 import { StyleSheet } from "react-native";
 
-import { feedsCollection } from "@/collections/feeds";
 import { HelloWave } from "@/components/hello-wave";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useLiveQuery } from "@tanstack/react-db";
+import { Colors } from "@/constants/theme";
+import { useFeeds } from "@/hooks/use-feeds";
 
 export default function HomeScreen() {
-  const { data } = useLiveQuery((q) =>
-    q.from({ feed: feedsCollection }).select(({ feed }) => ({
-      id: feed.id,
-      title: feed.title,
-      category: feed.category,
-    })),
-  );
-
+  const { data } = useFeeds();
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
+      headerBackgroundColor={{
+        light: Colors.light.surfaceContainerLow,
+        dark: Colors.dark.surfaceContainerLow,
+      }}
       headerImage={
         <Image
           source={require("@/assets/images/partial-react-logo.png")}

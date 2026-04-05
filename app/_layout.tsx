@@ -3,17 +3,22 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { useFonts } from "@expo-google-fonts/newsreader";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { useEffect, useMemo } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Fonts } from "@/constants/theme";
 import {
   QueryCache,
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { useMemo } from "react";
+
+SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -21,6 +26,14 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [fontsLoaded, fontError] = useFonts(Fonts.newsreader);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
   const queryClient = useMemo(
     () =>
       new QueryClient({
@@ -32,6 +45,10 @@ export default function RootLayout() {
       }),
     [],
   );
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
