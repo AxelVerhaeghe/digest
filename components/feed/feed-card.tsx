@@ -1,10 +1,10 @@
 import { StyleSheet } from "react-native";
 
+import { Badge } from "@/components/ui/badge";
+import { CoverImage } from "@/components/ui/cover-image";
 import { DotSeparator } from "@/components/ui/dot-separator";
-import { ThemedText } from "../ui/themed-text";
-import { ThemedView } from "../ui/themed-view";
-import { Image } from "expo-image";
-import { Badge } from "../ui/badge";
+import { ThemedText } from "@/components/ui/themed-text";
+import { ThemedView } from "@/components/ui/themed-view";
 import { formatDistanceToNow } from "date-fns";
 
 interface Props {
@@ -32,9 +32,7 @@ export function FeedCard({
   return (
     <ThemedView style={styles.container}>
       <Badge>{category}</Badge>
-      {!!coverImageUrl && (
-        <Image source={coverImageUrl} style={styles.coverImage} />
-      )}
+      {!!coverImageUrl && <CoverImage url={coverImageUrl} />}
       <ThemedText type="subtitle">{title}</ThemedText>
       <ThemedView style={styles.metadata}>
         {metadata
@@ -55,12 +53,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     flex: 1,
     gap: 16,
-  },
-  coverImage: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    marginBlockEnd: 8,
-    borderRadius: 4,
   },
   metadata: {
     flex: 1,
