@@ -84,7 +84,7 @@ export default function Article() {
 const styles = StyleSheet.create({
   content: {
     flex: 1,
-    padding: 8,
+    padding: 16,
   },
   webview: {
     backgroundColor: "transparent",

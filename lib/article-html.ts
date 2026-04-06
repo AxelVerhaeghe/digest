@@ -33,7 +33,7 @@ export function buildArticleHtml(
       background-color: ${c.surface};
       color: ${c.onSurface};
       font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
-      font-size: 1rem;
+      font-size: 112.5%;
       line-height: 1.7;
       word-wrap: break-word;
       overflow-wrap: break-word;
