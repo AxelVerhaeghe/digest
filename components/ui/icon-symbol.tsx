@@ -28,6 +28,7 @@ const MAPPING = {
   bookmark: "bookmark-border",
   "bookmark.fill": "bookmark",
   "square.and.arrow.up": "share",
+  newspaper: "article",
 } as IconMapping;
 
 /**

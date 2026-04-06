@@ -37,12 +37,14 @@ export function ArticleHeader({
   children,
 }: ArticleHeaderProps) {
   const surface = useThemeColor({}, "surface");
+  const surfaceContainer = useThemeColor({}, "surfaceContainer");
   const onSurface = useThemeColor({}, "onSurface");
   const onSurfaceVariant = useThemeColor({}, "onSurfaceVariant");
   const borderColor = useThemeColor({}, "outlineVariant");
 
   const textColor = hasImage ? "#fff" : onSurface;
   const mutedTextColor = hasImage ? "rgba(255,255,255,0.7)" : onSurfaceVariant;
+  const gradientFrom = hasImage ? "transparent" : surfaceContainer;
 
   const publishDate = formatDistanceToNow(new Date(publishedAt), {
     addSuffix: true,
@@ -50,14 +52,12 @@ export function ArticleHeader({
   const readTime = `${readingTime} min read`;
 
   return (
-    <View style={[styles.container, hasImage && { marginTop: -OVERLAP }]}>
-      {hasImage && (
-        <LinearGradient
-          colors={["transparent", surface, surface]}
-          locations={[0, 0.5, 1]}
-          style={styles.gradient}
-        />
-      )}
+    <View style={[styles.container, { marginTop: -OVERLAP }]}>
+      <LinearGradient
+        colors={[gradientFrom, surface, surface]}
+        locations={[0, 0.4, 1]}
+        style={styles.gradient}
+      />
       <View style={styles.textContent}>
         <Badge
           style={{ color: hasImage ? "rgba(255,255,255,0.8)" : undefined }}
