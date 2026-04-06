@@ -5,9 +5,14 @@ import type { WebViewMessageEvent } from "react-native-webview";
 import { ArticleHeader } from "@/components/article/article-header";
 import { ArticleHero } from "@/components/article/article-hero";
 import { ParallaxScrollView } from "@/components/layout/parallax-scroll-view";
+import { IconButton } from "@/components/ui/icon-button";
 import { ThemedView } from "@/components/ui/themed-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useEntry, useMarkAsRead } from "@/hooks/use-entries";
+import {
+  useEntry,
+  useMarkAsRead,
+  useToggleReadStatus,
+} from "@/hooks/use-entries";
 import { buildArticleHtml } from "@/lib/article-html";
 import { useLocalSearchParams } from "expo-router";
 import { StyleSheet } from "react-native";
@@ -29,9 +34,11 @@ export default function Article() {
   const params = useLocalSearchParams<{ entryId: string }>();
   const entryId = parseInt(params.entryId);
   const { data } = useEntry(entryId);
-  useMarkAsRead(entryId, data?.status);
+  const toggleReadStatus = useToggleReadStatus(entryId, data?.status);
   const colorScheme = useColorScheme() ?? "light";
   const [webViewHeight, setWebViewHeight] = useState(0);
+
+  useMarkAsRead(entryId, data?.status);
 
   const hasCoverImage = data?.cover_image_url != null;
   const content = data?.content;
@@ -67,7 +74,16 @@ export default function Article() {
         readingTime={data.reading_time}
         href={data.url}
         iconData={data.icon.data}
-      />
+      >
+        <IconButton
+          icon={
+            data.status === "unread"
+              ? "checkmark.circle"
+              : "checkmark.circle.fill"
+          }
+          onPress={toggleReadStatus}
+        />
+      </ArticleHeader>
       <ThemedView style={styles.content}>
         <WebView
           source={{ html }}

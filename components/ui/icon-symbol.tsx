@@ -23,6 +23,11 @@ const MAPPING = {
   "chevron.right": "chevron-right",
   "list.bullet": "format-list-bulleted",
   "book.fill": "auto-stories",
+  "checkmark.circle": "check-circle-outline",
+  "checkmark.circle.fill": "check-circle",
+  bookmark: "bookmark-border",
+  "bookmark.fill": "bookmark",
+  "square.and.arrow.up": "share",
 } as IconMapping;
 
 /**

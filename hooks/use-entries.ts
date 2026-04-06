@@ -1,4 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+
+import type { EntryStatus } from "@/api/types";
 
 import { eq } from "@tanstack/db";
 import { useLiveInfiniteQuery, useLiveQuery } from "@tanstack/react-db";
@@ -248,14 +250,22 @@ export function useEntry(entryId: number | null | undefined) {
  * collections' `onUpdate` handlers push the status change to the Miniflux
  * API in the background.
  *
- * No-ops if the entry is already read or if `status` is not yet available.
- *
+ * Only fires once per entry
  * @param entryId - The Miniflux entry ID.
  * @param status  - The entry's current status from the live query.
  */
 export function useMarkAsRead(entryId: number, status: string | undefined) {
+  const alreadyMarked = useRef(false);
+
   useEffect(() => {
+    alreadyMarked.current = false;
+  }, [entryId]);
+
+  useEffect(() => {
+    if (alreadyMarked.current) return;
     if (status !== "unread") return;
+
+    alreadyMarked.current = true;
 
     entriesCollection.update(entryId, (draft) => {
       draft.status = "read";
@@ -264,4 +274,22 @@ export function useMarkAsRead(entryId: number, status: string | undefined) {
       draft.status = "read";
     });
   }, [entryId, status]);
+}
+
+export function useToggleReadStatus(
+  entryId: number,
+  status: EntryStatus | undefined,
+) {
+  return () => {
+    if (status == null) return;
+
+    const newStatus: EntryStatus = status === "unread" ? "read" : "unread";
+
+    entryDetailCollection.update(entryId, (draft) => {
+      draft.status = newStatus;
+    });
+    entriesCollection.update(entryId, (draft) => {
+      draft.status = newStatus;
+    });
+  };
 }

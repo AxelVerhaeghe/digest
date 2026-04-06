@@ -1,3 +1,4 @@
+import type { PropsWithChildren } from "react";
 import { StyleSheet, View } from "react-native";
 
 import type { ExternalUrl } from "@/collections/schemas";
@@ -11,7 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 const OVERLAP = 200;
 
-type ArticleHeaderProps = {
+type ArticleHeaderProps = PropsWithChildren<{
   title: string;
   category: string;
   feedName: string;
@@ -21,7 +22,7 @@ type ArticleHeaderProps = {
   readingTime: number;
   href: ExternalUrl;
   iconData?: string;
-};
+}>;
 
 export function ArticleHeader({
   title,
@@ -33,6 +34,7 @@ export function ArticleHeader({
   readingTime,
   href,
   iconData,
+  children,
 }: ArticleHeaderProps) {
   const surface = useThemeColor({}, "surface");
   const onSurface = useThemeColor({}, "onSurface");
@@ -67,6 +69,7 @@ export function ArticleHeader({
             {title}
           </ThemedText>
         </ExternalLink>
+        <View style={styles.actions}>{children}</View>
         <View style={[styles.metadata, { borderColor }]}>
           <View style={styles.metaLeft}>
             <FeedIcon iconData={iconData} feedName={feedName} size={28} />
@@ -108,6 +111,10 @@ const styles = StyleSheet.create({
   },
   textContent: {
     padding: 16,
+    gap: 24,
+  },
+  actions: {
+    flexDirection: "row",
     gap: 8,
   },
   metadata: {
