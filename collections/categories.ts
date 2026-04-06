@@ -1,11 +1,11 @@
-import { createCollection } from '@tanstack/react-db';
-import { queryCollectionOptions } from '@tanstack/query-db-collection';
-import { persistedCollectionOptions } from '@tanstack/expo-db-sqlite-persistence';
+import { createCollection } from "@tanstack/react-db";
+import { queryCollectionOptions } from "@tanstack/query-db-collection";
+import { persistedCollectionOptions } from "@tanstack/expo-db-sqlite-persistence";
 
-import { api } from '@/api';
-import { queryClient } from '@/lib/query-client';
-import { createPersistence } from '@/lib/persistence';
-import type { CategoryRow } from '@/collections/schemas';
+import { api } from "@/api";
+import { queryClient } from "@/lib/query-client";
+import { createPersistence } from "@/lib/persistence";
+import type { CategoryRow } from "@/collections/schemas";
 
 /**
  * Categories collection.
@@ -15,8 +15,8 @@ import type { CategoryRow } from '@/collections/schemas';
  * for now (no onInsert/onUpdate/onDelete handlers).
  */
 const queryOptions = queryCollectionOptions({
-  id: 'categories',
-  queryKey: ['categories'],
+  id: "categories",
+  queryKey: ["categories"],
   queryClient,
   getKey: (category: CategoryRow) => category.id,
   queryFn: async ({ signal }): Promise<CategoryRow[]> => {

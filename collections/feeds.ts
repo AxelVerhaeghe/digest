@@ -1,11 +1,11 @@
-import { createCollection } from '@tanstack/react-db';
-import { queryCollectionOptions } from '@tanstack/query-db-collection';
-import { persistedCollectionOptions } from '@tanstack/expo-db-sqlite-persistence';
+import { createCollection } from "@tanstack/react-db";
+import { queryCollectionOptions } from "@tanstack/query-db-collection";
+import { persistedCollectionOptions } from "@tanstack/expo-db-sqlite-persistence";
 
-import { api } from '@/api';
-import { queryClient } from '@/lib/query-client';
-import { createPersistence } from '@/lib/persistence';
-import type { FeedRow } from '@/collections/schemas';
+import { api } from "@/api";
+import { queryClient } from "@/lib/query-client";
+import { createPersistence } from "@/lib/persistence";
+import type { FeedRow } from "@/collections/schemas";
 
 /**
  * Feeds collection.
@@ -15,8 +15,8 @@ import type { FeedRow } from '@/collections/schemas';
  * API -- the local collection is read-only for now.
  */
 const queryOptions = queryCollectionOptions({
-  id: 'feeds',
-  queryKey: ['feeds'],
+  id: "feeds",
+  queryKey: ["feeds"],
   queryClient,
   getKey: (feed: FeedRow) => feed.id,
   queryFn: async ({ signal }): Promise<FeedRow[]> => {
