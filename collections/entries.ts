@@ -10,6 +10,7 @@ import type { EntryListRow } from "@/collections/schemas";
 import { getCoverImage } from "@/lib/cover-image";
 import { createPersistence } from "@/lib/persistence";
 import { queryClient } from "@/lib/query-client";
+import { COUNTERS_QUERY_KEY } from "@/hooks/use-unread-counts";
 
 /** Default page size when the live query doesn't specify a limit. */
 const DEFAULT_LIMIT = 50;
@@ -129,10 +130,16 @@ const queryOptions = queryCollectionOptions({
       (m) => m.changes.status != null,
     );
     if (statusChanges.length > 0) {
+      const newStatus = statusChanges[0]!.changes.status as EntryStatus;
+
       await api.updateEntries({
         entry_ids: statusChanges.map((m) => m.original.id),
-        status: statusChanges[0]!.changes.status as EntryStatus,
+        status: newStatus,
       });
+
+      // Refetch counters from the server so the feeds screen shows
+      // up-to-date unread counts after a status change.
+      queryClient.invalidateQueries({ queryKey: COUNTERS_QUERY_KEY });
     }
   },
   queryFn: async (ctx): Promise<EntryListRow[]> => {

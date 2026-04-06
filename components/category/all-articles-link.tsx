@@ -1,11 +1,14 @@
+import { StyleSheet } from "react-native";
+
 import { Link } from "expo-router";
+
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme.web";
+import { formatUnreadCount } from "@/hooks/use-unread-counts";
+import { Badge } from "../ui/badge";
+import { IconSymbol } from "../ui/icon-symbol";
 import { ThemedView } from "../ui/themed-view";
 import { ThemedText } from "../ui/themed-text";
-import { StyleSheet } from "react-native";
-import { IconSymbol } from "../ui/icon-symbol";
-import { useColorScheme } from "@/hooks/use-color-scheme.web";
-import { Colors } from "@/constants/theme";
-import { Badge } from "../ui/badge";
 
 interface Props {
   unreadCount: number;
@@ -32,7 +35,9 @@ export function AllArticlesLink({ unreadCount }: Props) {
           />
           <ThemedView style={[styles.textContent, { backgroundColor }]}>
             <ThemedText>All Articles</ThemedText>
-            <Badge>{`${unreadCount} unread entries`}</Badge>
+            {unreadCount > 0 && (
+              <Badge>{`${formatUnreadCount(unreadCount)} unread entries`}</Badge>
+            )}
           </ThemedView>
           <IconSymbol
             size={20}
