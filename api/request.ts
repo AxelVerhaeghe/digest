@@ -110,12 +110,19 @@ export async function request<T>(
     headers["Content-Type"] = "application/json";
   }
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  } catch (error) {
+    const host = new URL(url).host;
+    const reason = error instanceof Error ? error.message : "Unknown error";
+    throw new ApiError(0, `Network error reaching ${host}: ${reason}`, url);
+  }
 
   if (!response.ok) {
     const errorMessage = await parseErrorBody(response);
