@@ -34,7 +34,7 @@ export function buildArticleHtml(
       color: ${c.onSurface};
       font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
       font-size: 112.5%;
-      line-height: 1.7;
+      line-height: 1.8;
       word-wrap: break-word;
       overflow-wrap: break-word;
       overflow: hidden;
@@ -42,15 +42,26 @@ export function buildArticleHtml(
     }
 
     h1, h2, h3, h4, h5, h6 {
-      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
       color: ${c.onSurface};
-      line-height: 1.3;
+      line-height: 1.2;
       margin-top: 1.4em;
       margin-bottom: 0.6em;
+      font-style: italic;
     }
 
-    h1 { font-size: 1.6em; font-weight: 700; }
-    h2 { font-size: 1.35em; font-weight: 700; }
+    h1 {
+      font-size: 2.6em;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    h2 {
+      font-size: 1.6em;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
     h3 { font-size: 1.15em; font-weight: 600; }
     h4 { font-size: 1.05em; font-weight: 600; }
     h5 { font-size: 1em; font-weight: 500; }
