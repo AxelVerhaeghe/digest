@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api";

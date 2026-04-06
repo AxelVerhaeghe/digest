@@ -1,10 +1,9 @@
 import { StyleSheet, View } from "react-native";
 
-import { Image } from "expo-image";
-
 import type { ExternalUrl } from "@/collections/schemas";
 import { ExternalLink } from "@/components/navigation/external-link";
 import { Badge } from "@/components/ui/badge";
+import { FeedIcon } from "@/components/ui/feed-icon";
 import { ThemedText } from "@/components/ui/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { formatDistanceToNow } from "date-fns";
@@ -70,12 +69,7 @@ export function ArticleHeader({
         </ExternalLink>
         <View style={[styles.metadata, { borderColor }]}>
           <View style={styles.metaLeft}>
-            {!!iconData && (
-              <Image
-                source={{ uri: `data:${iconData}` }}
-                style={styles.feedIcon}
-              />
-            )}
+            <FeedIcon iconData={iconData} feedName={feedName} size={28} />
             <View>
               {!!author && (
                 <Badge style={[{ color: mutedTextColor }]} numberOfLines={1}>
@@ -131,12 +125,6 @@ const styles = StyleSheet.create({
     gap: 8,
     flexShrink: 1,
     flexDirection: "row",
-  },
-  feedIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 3,
-    padding: 4,
   },
   metaRight: {
     gap: 6,
