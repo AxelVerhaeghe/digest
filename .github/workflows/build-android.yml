@@ -1,0 +1,66 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Version name for the build (e.g. 1.0.0)"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean
+
+      - name: Decode signing keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=${{ github.workspace }}/android/app/release.keystore \
+            -Pandroid.injected.signing.store.password=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Determine version label
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version_name }}" ]; then
+            echo "label=${{ github.event.inputs.version_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "label=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ steps.version.outputs.label }}.apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 90
