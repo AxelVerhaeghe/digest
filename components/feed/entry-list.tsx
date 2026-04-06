@@ -30,6 +30,7 @@ function renderItem({ item }: ListRenderItemInfo<EntryListEntry>) {
       feedName={item.feed.title}
       publishedAt={item.published_at}
       id={item.id}
+      status={item.status}
     />
   );
 }

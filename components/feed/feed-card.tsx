@@ -16,6 +16,7 @@ interface Props {
   feedName: string;
   publishedAt: string;
   id: number;
+  status: "read" | "unread" | "removed";
 }
 
 export function FeedCard({
@@ -26,6 +27,7 @@ export function FeedCard({
   feedName,
   publishedAt,
   id,
+  status,
 }: Props) {
   const publishDate = formatDistanceToNow(new Date(publishedAt), {
     addSuffix: true,
@@ -34,7 +36,9 @@ export function FeedCard({
 
   return (
     <Link href={`/entries/${id}`}>
-      <ThemedView style={styles.container}>
+      <ThemedView
+        style={[styles.container, status === "read" && { opacity: 0.5 }]}
+      >
         <Badge>{category}</Badge>
         {!!coverImageUrl && <CoverImage url={coverImageUrl} />}
         <ThemedText type="subtitle">{title}</ThemedText>
