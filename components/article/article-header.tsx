@@ -1,4 +1,6 @@
-import { Image, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+
+import { Image } from "expo-image";
 
 import type { ExternalUrl } from "@/collections/schemas";
 import { ExternalLink } from "@/components/navigation/external-link";
@@ -37,7 +39,6 @@ export function ArticleHeader({
   const onSurface = useThemeColor({}, "onSurface");
   const onSurfaceVariant = useThemeColor({}, "onSurfaceVariant");
   const borderColor = useThemeColor({}, "outlineVariant");
-  const surfaceColor = useThemeColor({}, "surfaceContainerHighest");
 
   const textColor = hasImage ? "#fff" : onSurface;
   const mutedTextColor = hasImage ? "rgba(255,255,255,0.7)" : onSurfaceVariant;
@@ -72,7 +73,7 @@ export function ArticleHeader({
             {!!iconData && (
               <Image
                 source={{ uri: `data:${iconData}` }}
-                style={[styles.feedIcon, { backgroundColor: surfaceColor }]}
+                style={styles.feedIcon}
               />
             )}
             <View>

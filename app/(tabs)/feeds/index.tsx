@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
+
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AllArticlesLink } from "@/components/category/all-articles-link";
