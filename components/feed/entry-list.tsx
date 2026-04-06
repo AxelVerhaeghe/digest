@@ -14,6 +14,8 @@ type Props = {
   data: ReturnType<typeof useEntries>["data"];
   hasNextPage: boolean;
   fetchNextPage: () => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 function getItemKey(item: EntryListEntry) {
@@ -35,7 +37,13 @@ function renderItem({ item }: ListRenderItemInfo<EntryListEntry>) {
   );
 }
 
-export function EntryList({ data, hasNextPage, fetchNextPage }: Props) {
+export function EntryList({
+  data,
+  hasNextPage,
+  fetchNextPage,
+  refreshing,
+  onRefresh,
+}: Props) {
   const handleEndReached = () => {
     if (hasNextPage) {
       fetchNextPage();
@@ -55,6 +63,8 @@ export function EntryList({ data, hasNextPage, fetchNextPage }: Props) {
           initialNumToRender={4}
           maxToRenderPerBatch={3}
           windowSize={5}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         />
       </SafeAreaView>
     </ThemedView>
