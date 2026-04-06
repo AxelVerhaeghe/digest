@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { eq } from "@tanstack/db";
 import { useLiveInfiniteQuery, useLiveQuery } from "@tanstack/react-db";
 
@@ -236,4 +238,30 @@ export function useEntry(entryId: number | null | undefined) {
         : undefined,
     [entryId],
   );
+}
+
+/**
+ * Mark an entry as read when the article detail screen mounts.
+ *
+ * Performs an optimistic update on both the list and detail collections so
+ * the feed list immediately reflects the change (dimmed card). The
+ * collections' `onUpdate` handlers push the status change to the Miniflux
+ * API in the background.
+ *
+ * No-ops if the entry is already read or if `status` is not yet available.
+ *
+ * @param entryId - The Miniflux entry ID.
+ * @param status  - The entry's current status from the live query.
+ */
+export function useMarkAsRead(entryId: number, status: string | undefined) {
+  useEffect(() => {
+    if (status !== "unread") return;
+
+    entriesCollection.update(entryId, (draft) => {
+      draft.status = "read";
+    });
+    entryDetailCollection.update(entryId, (draft) => {
+      draft.status = "read";
+    });
+  }, [entryId, status]);
 }

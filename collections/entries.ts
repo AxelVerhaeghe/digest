@@ -5,7 +5,7 @@ import { parseLoadSubsetOptions } from "@tanstack/db";
 import type { SimpleComparison, ParsedOrderBy } from "@tanstack/db";
 
 import { api } from "@/api";
-import type { EntryQueryParams } from "@/api/types";
+import type { EntryQueryParams, EntryStatus } from "@/api/types";
 import type { EntryListRow } from "@/collections/schemas";
 import { getCoverImage } from "@/lib/cover-image";
 import { createPersistence } from "@/lib/persistence";
@@ -124,6 +124,17 @@ const queryOptions = queryCollectionOptions({
   queryClient,
   syncMode: "on-demand",
   getKey: (entry: EntryListRow) => entry.id,
+  onUpdate: async ({ transaction }) => {
+    const statusChanges = transaction.mutations.filter(
+      (m) => m.changes.status != null,
+    );
+    if (statusChanges.length > 0) {
+      await api.updateEntries({
+        entry_ids: statusChanges.map((m) => m.original.id),
+        status: statusChanges[0]!.changes.status as EntryStatus,
+      });
+    }
+  },
   queryFn: async (ctx): Promise<EntryListRow[]> => {
     const { filters, sorts, limit } = parseLoadSubsetOptions(
       ctx.meta?.loadSubsetOptions,

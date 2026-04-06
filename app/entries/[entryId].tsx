@@ -7,7 +7,7 @@ import { ArticleHero } from "@/components/article/article-hero";
 import { ParallaxScrollView } from "@/components/layout/parallax-scroll-view";
 import { ThemedView } from "@/components/ui/themed-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useEntry } from "@/hooks/use-entries";
+import { useEntry, useMarkAsRead } from "@/hooks/use-entries";
 import { buildArticleHtml } from "@/lib/article-html";
 import { useLocalSearchParams } from "expo-router";
 import { StyleSheet } from "react-native";
@@ -29,6 +29,7 @@ export default function Article() {
   const params = useLocalSearchParams<{ entryId: string }>();
   const entryId = parseInt(params.entryId);
   const { data } = useEntry(entryId);
+  useMarkAsRead(entryId, data?.status);
   const colorScheme = useColorScheme() ?? "light";
   const [webViewHeight, setWebViewHeight] = useState(0);
 
