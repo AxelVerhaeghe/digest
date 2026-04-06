@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-entries";
 import { buildArticleHtml } from "@/lib/article-html";
 import { useLocalSearchParams } from "expo-router";
-import { StyleSheet } from "react-native";
+import { Share, StyleSheet } from "react-native";
 import { WebView } from "react-native-webview";
 
 const INJECTED_JS = `
@@ -88,6 +88,10 @@ export default function Article() {
         <IconButton
           icon={data.starred ? "bookmark.fill" : "bookmark"}
           onPress={toggleBookmark}
+        />
+        <IconButton
+          icon="square.and.arrow.up"
+          onPress={() => Share.share({ url: data.url, message: data.url })}
         />
       </ArticleHeader>
       <ThemedView style={styles.content}>
