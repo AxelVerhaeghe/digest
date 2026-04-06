@@ -11,6 +11,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   useEntry,
   useMarkAsRead,
+  useToggleBookmark,
   useToggleReadStatus,
 } from "@/hooks/use-entries";
 import { buildArticleHtml } from "@/lib/article-html";
@@ -35,6 +36,7 @@ export default function Article() {
   const entryId = parseInt(params.entryId);
   const { data } = useEntry(entryId);
   const toggleReadStatus = useToggleReadStatus(entryId, data?.status);
+  const toggleBookmark = useToggleBookmark(entryId, data?.starred);
   const colorScheme = useColorScheme() ?? "light";
   const [webViewHeight, setWebViewHeight] = useState(0);
 
@@ -82,6 +84,10 @@ export default function Article() {
               : "checkmark.circle.fill"
           }
           onPress={toggleReadStatus}
+        />
+        <IconButton
+          icon={data.starred ? "bookmark.fill" : "bookmark"}
+          onPress={toggleBookmark}
         />
       </ArticleHeader>
       <ThemedView style={styles.content}>

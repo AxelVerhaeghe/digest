@@ -141,6 +141,13 @@ const queryOptions = queryCollectionOptions({
       // up-to-date unread counts after a status change.
       queryClient.invalidateQueries({ queryKey: COUNTERS_QUERY_KEY });
     }
+
+    const starredChanges = transaction.mutations.filter(
+      (m) => m.changes.starred != null,
+    );
+    for (const m of starredChanges) {
+      await api.toggleBookmark(m.original.id);
+    }
   },
   queryFn: async (ctx): Promise<EntryListRow[]> => {
     const { filters, sorts, limit } = parseLoadSubsetOptions(

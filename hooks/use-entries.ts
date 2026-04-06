@@ -267,9 +267,13 @@ export function useMarkAsRead(entryId: number, status: string | undefined) {
 
     alreadyMarked.current = true;
 
-    entriesCollection.update(entryId, (draft) => {
-      draft.status = "read";
-    });
+    try {
+      entriesCollection.update(entryId, (draft) => {
+        draft.status = "read";
+      });
+    } catch {
+      // Entry may not be loaded in the list collection yet.
+    }
     entryDetailCollection.update(entryId, (draft) => {
       draft.status = "read";
     });
@@ -288,8 +292,34 @@ export function useToggleReadStatus(
     entryDetailCollection.update(entryId, (draft) => {
       draft.status = newStatus;
     });
-    entriesCollection.update(entryId, (draft) => {
-      draft.status = newStatus;
+    try {
+      entriesCollection.update(entryId, (draft) => {
+        draft.status = newStatus;
+      });
+    } catch {
+      // Entry may not be loaded in the list collection yet.
+    }
+  };
+}
+
+export function useToggleBookmark(
+  entryId: number,
+  starred: boolean | undefined,
+) {
+  return () => {
+    if (starred == null) return;
+
+    const newStarred = !starred;
+
+    entryDetailCollection.update(entryId, (draft) => {
+      draft.starred = newStarred;
     });
+    try {
+      entriesCollection.update(entryId, (draft) => {
+        draft.starred = newStarred;
+      });
+    } catch {
+      // Entry may not be loaded in the list collection yet.
+    }
   };
 }

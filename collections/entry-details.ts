@@ -37,6 +37,13 @@ const queryOptions = queryCollectionOptions({
         status: statusChanges[0]!.changes.status as EntryStatus,
       });
     }
+
+    const starredChanges = transaction.mutations.filter(
+      (m) => m.changes.starred != null,
+    );
+    for (const m of starredChanges) {
+      await api.toggleBookmark(m.original.id);
+    }
   },
   queryFn: async (ctx): Promise<EntryRow[]> => {
     const { filters } = parseLoadSubsetOptions(ctx.meta?.loadSubsetOptions);
