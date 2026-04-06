@@ -34,24 +34,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="feeds/index"
+        name="feeds"
         options={{
           title: "Feeds",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="list.bullet" color={color} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="feeds/[feedId]"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="entries/[entryId]"
-        options={{
-          href: null,
         }}
       />
     </Tabs>
