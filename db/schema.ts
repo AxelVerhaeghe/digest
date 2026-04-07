@@ -109,6 +109,11 @@ export const syncMeta = sqliteTable("sync_meta", {
   value: text().notNull(),
 });
 
+export const userSettings = sqliteTable("user_settings", {
+  key: text().primaryKey(),
+  value: text().notNull(),
+});
+
 export type EntryRow = typeof entries.$inferSelect;
 export type FeedRow = typeof feeds.$inferSelect;
 export type CategoryRow = typeof categories.$inferSelect;

@@ -8,6 +8,13 @@
       "when": 1775507465399,
       "tag": "0000_foamy_wind_dancer",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1775591578458,
+      "tag": "0001_typical_dagger",
+      "breakpoints": true
     }
   ]
 }

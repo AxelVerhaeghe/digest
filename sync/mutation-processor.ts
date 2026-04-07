@@ -5,7 +5,6 @@ import { ApiError } from "@/api/errors";
 import type { EntryStatus } from "@/api/types";
 import { db } from "@/db/database";
 import { pendingMutations } from "@/db/schema";
-import { invalidateEntries } from "@/db/invalidate";
 
 function isClientError(error: unknown): boolean {
   return error instanceof ApiError && error.status >= 400 && error.status < 500;
@@ -89,6 +88,4 @@ export async function flushMutationQueue(): Promise<void> {
       }
     }
   }
-
-  invalidateEntries();
 }

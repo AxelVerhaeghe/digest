@@ -4,9 +4,11 @@ import { EntryList } from "@/components/feed/entry-list";
 import { HeaderActions } from "@/components/feed/feed-top-bar";
 import { useEntries, useMarkAllEntriesRead } from "@/hooks/use-entries";
 import { useRefreshEntries } from "@/hooks/use-refresh-entries";
+import { useStatusFilter } from "@/hooks/use-settings";
 
 export default function HomeScreen() {
-  const entries = useEntries();
+  const { data: statusFilter = "all" } = useStatusFilter();
+  const entries = useEntries(statusFilter);
   const { isPending, mutate } = useRefreshEntries();
   const markAllRead = useMarkAllEntriesRead();
 

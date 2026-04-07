@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/ui/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { useStatusFilter, useUpdateStatusFilter } from "@/hooks/use-settings";
+import type { StatusFilter } from "@/hooks/use-settings";
 
 type SortOrder = "newest" | "oldest";
-type StatusFilter = "all" | "unread";
 
 type OptionRowProps = {
   label: string;
@@ -25,7 +26,12 @@ function OptionRow({
   borderColor,
 }: OptionRowProps) {
   return (
-    <Pressable onPress={onPress} style={styles.optionRow}>
+    <Pressable
+      onPress={onPress}
+      style={styles.optionRow}
+      role="radio"
+      aria-checked={selected}
+    >
       <View
         style={[
           styles.radio,
@@ -58,11 +64,16 @@ export default function FilterScreen() {
   const borderColor = useThemeColor({}, "outlineVariant");
 
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const { data: statusFilter = "all" } = useStatusFilter();
+  const updateStatusFilter = useUpdateStatusFilter();
+
+  const setStatusFilter = (value: StatusFilter) => {
+    updateStatusFilter.mutate(value);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      <View style={styles.section}>
+      <View style={styles.section} role="radiogroup" aria-label="Sort order">
         <ThemedText style={[styles.sectionTitle, { color: sectionColor }]}>
           Sort order
         </ThemedText>
@@ -84,7 +95,7 @@ export default function FilterScreen() {
         />
       </View>
 
-      <View style={styles.section}>
+      <View style={styles.section} role="radiogroup" aria-label="Show">
         <ThemedText style={[styles.sectionTitle, { color: sectionColor }]}>
           Show
         </ThemedText>

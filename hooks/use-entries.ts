@@ -6,6 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import { and, desc, eq, inArray, lt, SQL } from "drizzle-orm";
 
 import { db } from "@/db/database";
@@ -16,11 +17,12 @@ import {
   icons,
   pendingMutations,
 } from "@/db/schema";
-import { invalidateEntries } from "@/db/invalidate";
+import { invalidateEntries, invalidateUnreadCounts } from "@/db/invalidate";
 import { fetchEntryContent, fetchOlderEntries } from "@/sync/sync-engine";
 import type { FetchOlderFilters } from "@/sync/sync-engine";
 import { flushMutationQueue } from "@/sync/mutation-processor";
 import type { EntryStatus } from "@/api/types";
+import type { StatusFilter } from "@/hooks/use-settings";
 
 /** Number of entries loaded per page in infinite-scroll lists. */
 const PAGE_SIZE = 20;
@@ -155,6 +157,37 @@ const INITIAL_CURSOR: PageCursor = {
   oldestTimestamp: null,
 };
 
+type PageResult = { items: EntryListItem[]; nextCursor: PageCursor };
+
+/**
+ * Update a single entry's status in all cached infinite entry list queries.
+ *
+ * Instead of invalidating (which re-runs SQL and may remove entries from
+ * filtered lists), this directly patches the cached data so entries stay
+ * visible with their updated status.
+ */
+function patchEntryStatusInCache(
+  queryClient: QueryClient,
+  entryId: number,
+  newStatus: EntryStatus,
+) {
+  queryClient.setQueriesData<InfiniteData<PageResult>>(
+    { queryKey: ["entries"], type: "active" },
+    (old) => {
+      if (!old?.pages) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page) => ({
+          ...page,
+          items: page.items.map((item) =>
+            item.id === entryId ? { ...item, status: newStatus } : item,
+          ),
+        })),
+      };
+    },
+  );
+}
+
 /**
  * Hybrid local-then-remote query function. Reads from local SQLite first;
  * when local data runs out, fetches older entries from the Miniflux API,
@@ -263,15 +296,24 @@ async function hybridQueryFn(
 /**
  * All entries from the local store, ordered newest-first.
  * Transparently fetches older entries from the API when local data runs out.
+ *
+ * When `statusFilter` is `"unread"`, only unread entries are included in the
+ * initial query. Already-loaded entries are NOT removed from the list when
+ * their status changes (freeze behavior).
  */
-export function useEntries() {
+export function useEntries(statusFilter: StatusFilter = "all") {
+  const whereClause =
+    statusFilter === "unread" ? eq(entries.status, "unread") : undefined;
+  const filters: FetchOlderFilters =
+    statusFilter === "unread" ? { status: "unread" } : {};
+
   return useInfiniteQuery({
-    queryKey: ["entries", "all"],
+    queryKey: ["entries", "all", { statusFilter }],
     queryFn: async ({ pageParam }) => {
       const { items, nextCursor } = await hybridQueryFn(
         pageParam,
-        undefined,
-        {},
+        whereClause,
+        filters,
       );
       return { items, nextCursor };
     },
@@ -288,14 +330,24 @@ export function useEntries() {
 /**
  * Entries belonging to a single feed, ordered newest-first.
  */
-export function useFeedEntries(feedId: number) {
+export function useFeedEntries(
+  feedId: number,
+  statusFilter: StatusFilter = "all",
+) {
+  const conditions: SQL[] = [eq(entries.feed_id, feedId)];
+  if (statusFilter === "unread") conditions.push(eq(entries.status, "unread"));
+
+  const whereClause = and(...conditions);
+  const filters: FetchOlderFilters =
+    statusFilter === "unread" ? { feedId, status: "unread" } : { feedId };
+
   return useInfiniteQuery({
-    queryKey: ["entries", "feed", feedId],
+    queryKey: ["entries", "feed", feedId, { statusFilter }],
     queryFn: async ({ pageParam }) => {
       const { items, nextCursor } = await hybridQueryFn(
         pageParam,
-        eq(entries.feed_id, feedId),
-        { feedId },
+        whereClause,
+        filters,
       );
       return { items, nextCursor };
     },
@@ -312,14 +364,26 @@ export function useFeedEntries(feedId: number) {
 /**
  * Entries whose feed belongs to the given category, ordered newest-first.
  */
-export function useCategoryEntries(categoryId: number) {
+export function useCategoryEntries(
+  categoryId: number,
+  statusFilter: StatusFilter = "all",
+) {
+  const conditions: SQL[] = [eq(feeds.category_id, categoryId)];
+  if (statusFilter === "unread") conditions.push(eq(entries.status, "unread"));
+
+  const whereClause = and(...conditions);
+  const filters: FetchOlderFilters =
+    statusFilter === "unread"
+      ? { categoryId, status: "unread" }
+      : { categoryId };
+
   return useInfiniteQuery({
-    queryKey: ["entries", "category", categoryId],
+    queryKey: ["entries", "category", categoryId, { statusFilter }],
     queryFn: async ({ pageParam }) => {
       const { items, nextCursor } = await hybridQueryFn(
         pageParam,
-        eq(feeds.category_id, categoryId),
-        { categoryId },
+        whereClause,
+        filters,
       );
       return { items, nextCursor };
     },
@@ -477,6 +541,10 @@ export function useEntry(entryId: number | null | undefined) {
  *
  * Performs an optimistic local update and queues the change for API sync.
  * Only fires once per entry.
+ *
+ * Uses direct cache patching instead of query invalidation so that entries
+ * remain visible in unread-filtered lists (with updated opacity) rather
+ * than disappearing on refetch.
  */
 export function useMarkAsRead(
   entryId: number,
@@ -508,7 +576,8 @@ export function useMarkAsRead(
         created_at: new Date().toISOString(),
       });
 
-      invalidateEntries();
+      patchEntryStatusInCache(queryClient, entryId, "read");
+      invalidateUnreadCounts();
       queryClient.invalidateQueries({
         queryKey: ["entries", "detail", entryId],
       });
@@ -519,6 +588,8 @@ export function useMarkAsRead(
 
 /**
  * Returns a mutation for toggling an entry's read/unread status.
+ *
+ * Uses direct cache patching to preserve freeze behavior in filtered lists.
  */
 export function useToggleReadStatus(
   entryId: number,
@@ -542,7 +613,8 @@ export function useToggleReadStatus(
         created_at: new Date().toISOString(),
       });
 
-      invalidateEntries();
+      patchEntryStatusInCache(queryClient, entryId, newStatus);
+      invalidateUnreadCounts();
       queryClient.invalidateQueries({
         queryKey: ["entries", "detail", entryId],
       });
