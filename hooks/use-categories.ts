@@ -1,13 +1,30 @@
-import { categoriesCollection } from "@/collections/categories";
-import { useLiveQuery } from "@tanstack/react-db";
+import { useQuery } from "@tanstack/react-query";
 
+import { db } from "@/db/database";
+import { categories } from "@/db/schema";
+
+export type CategoryListItem = {
+  id: number;
+  title: string;
+  feed_count: number | null;
+  total_unread: number | null;
+};
+
+/**
+ * All categories from the local store.
+ */
 export function useCategories() {
-  return useLiveQuery((q) =>
-    q.from({ category: categoriesCollection }).select(({ category }) => ({
-      id: category.id,
-      title: category.title,
-      feed_count: category.feed_count,
-      total_unread: category.total_unread,
-    })),
-  );
+  return useQuery({
+    queryKey: ["categories"],
+    queryFn: async (): Promise<CategoryListItem[]> => {
+      return db
+        .select({
+          id: categories.id,
+          title: categories.title,
+          feed_count: categories.feed_count,
+          total_unread: categories.total_unread,
+        })
+        .from(categories);
+    },
+  });
 }

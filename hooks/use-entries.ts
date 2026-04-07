@@ -1,261 +1,482 @@
 import { useEffect, useRef } from "react";
 
-import type { EntryStatus } from "@/api/types";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { and, desc, eq, lt, SQL } from "drizzle-orm";
 
-import { eq } from "@tanstack/db";
-import { useLiveInfiniteQuery, useLiveQuery } from "@tanstack/react-db";
-
-import { entriesCollection } from "@/collections/entries";
-import { entryDetailCollection } from "@/collections/entry-details";
-import { iconsCollection } from "@/collections/icons";
+import { db } from "@/db/database";
+import {
+  categories,
+  entries,
+  feeds,
+  icons,
+  pendingMutations,
+} from "@/db/schema";
+import { invalidateEntries } from "@/db/invalidate";
+import { fetchEntryContent, fetchOlderEntries } from "@/sync/sync-engine";
+import type { FetchOlderFilters } from "@/sync/sync-engine";
+import { flushMutationQueue } from "@/sync/mutation-processor";
 
 /** Number of entries loaded per page in infinite-scroll lists. */
 const PAGE_SIZE = 20;
 
 /**
- * All entries from the local store, ordered newest-first.
+ * Shared select fields for entry list queries. Avoids duplicating the
+ * projection across every list hook.
+ */
+const entryListSelect = {
+  id: entries.id,
+  title: entries.title,
+  url: entries.url,
+  author: entries.author,
+  published_at: entries.published_at,
+  status: entries.status,
+  starred: entries.starred,
+  reading_time: entries.reading_time,
+  feed_id: entries.feed_id,
+  cover_image_url: entries.cover_image_url,
+  feed_title: feeds.title,
+  feed_site_url: feeds.site_url,
+  category_id: feeds.category_id,
+  category_title: categories.title,
+  icon_data: icons.data,
+  icon_mime_type: icons.mime_type,
+} as const;
+
+export type EntryListItem = {
+  id: number;
+  title: string;
+  url: string;
+  author: string;
+  published_at: string;
+  status: string;
+  starred: boolean;
+  reading_time: number;
+  feed_id: number;
+  cover_image_url: string | null;
+  feed: {
+    title: string;
+    site_url: string;
+    category: {
+      id: number;
+      title: string;
+    };
+  };
+  icon: {
+    data: string | null;
+    mime_type: string | null;
+  };
+};
+
+/**
+ * Transform a raw query row into the shape expected by UI components.
+ */
+function toEntryListItem(row: {
+  id: number;
+  title: string;
+  url: string;
+  author: string;
+  published_at: string;
+  status: string;
+  starred: boolean;
+  reading_time: number;
+  feed_id: number;
+  cover_image_url: string | null;
+  feed_title: string;
+  feed_site_url: string;
+  category_id: number;
+  category_title: string;
+  icon_data: string | null;
+  icon_mime_type: string | null;
+}): EntryListItem {
+  return {
+    id: row.id,
+    title: row.title,
+    url: row.url,
+    author: row.author,
+    published_at: row.published_at,
+    status: row.status,
+    starred: row.starred,
+    reading_time: row.reading_time,
+    feed_id: row.feed_id,
+    cover_image_url: row.cover_image_url,
+    feed: {
+      title: row.feed_title,
+      site_url: row.feed_site_url,
+      category: {
+        id: row.category_id,
+        title: row.category_title,
+      },
+    },
+    icon: {
+      data: row.icon_data,
+      mime_type: row.icon_mime_type,
+    },
+  };
+}
+
+/**
+ * Base query builder for entry lists. Joins entries with feeds, categories,
+ * and icons.
+ */
+function baseEntryListQuery() {
+  return db
+    .select(entryListSelect)
+    .from(entries)
+    .innerJoin(feeds, eq(entries.feed_id, feeds.id))
+    .innerJoin(categories, eq(feeds.category_id, categories.id))
+    .leftJoin(icons, eq(feeds.icon_id, icons.id));
+}
+
+type EntryListRow = Awaited<ReturnType<typeof baseEntryListQuery>>[number];
+
+/**
+ * Page cursor for hybrid local/remote infinite queries.
  *
- * Returns paginated data with infinite-scroll controls.
+ * - `offset`: the SQL OFFSET for the next local page.
+ * - `remoteExhausted`: true when the API has no more older entries.
+ * - `oldestTimestamp`: the published_at of the oldest entry seen so far,
+ *   used as the cursor for fetching older entries from the API.
+ */
+type PageCursor = {
+  offset: number;
+  remoteExhausted: boolean;
+  oldestTimestamp: string | null;
+};
+
+const INITIAL_CURSOR: PageCursor = {
+  offset: 0,
+  remoteExhausted: false,
+  oldestTimestamp: null,
+};
+
+/**
+ * Hybrid local-then-remote query function. Reads from local SQLite first;
+ * when local data runs out, fetches older entries from the Miniflux API,
+ * stores them locally, and returns them.
+ */
+async function hybridQueryFn(
+  cursor: PageCursor,
+  whereClause: SQL | undefined,
+  filters: FetchOlderFilters,
+): Promise<{ items: EntryListItem[]; nextCursor: PageCursor }> {
+  const conditions = whereClause ? [whereClause] : [];
+
+  const localRows = await baseEntryListQuery()
+    .where(and(...conditions))
+    .orderBy(desc(entries.published_at))
+    .limit(PAGE_SIZE)
+    .offset(cursor.offset);
+
+  const localItems = localRows.map(toEntryListItem);
+
+  // Track the oldest timestamp across all items we've seen
+  let oldest = cursor.oldestTimestamp;
+  for (const item of localItems) {
+    if (oldest === null || item.published_at < oldest) {
+      oldest = item.published_at;
+    }
+  }
+
+  // If we got a full page from local, return it
+  if (localItems.length === PAGE_SIZE) {
+    return {
+      items: localItems,
+      nextCursor: {
+        offset: cursor.offset + PAGE_SIZE,
+        remoteExhausted: cursor.remoteExhausted,
+        oldestTimestamp: oldest,
+      },
+    };
+  }
+
+  // Local data ran out. If remote is already exhausted, return what we have.
+  if (cursor.remoteExhausted || oldest === null) {
+    return {
+      items: localItems,
+      nextCursor: { ...cursor, remoteExhausted: true, oldestTimestamp: oldest },
+    };
+  }
+
+  // Try fetching older entries from the API
+  try {
+    const needed = PAGE_SIZE - localItems.length;
+    const { fetched, hasMore } = await fetchOlderEntries(
+      oldest,
+      filters,
+      needed,
+    );
+
+    if (fetched === 0) {
+      return {
+        items: localItems,
+        nextCursor: {
+          offset: cursor.offset + localItems.length,
+          remoteExhausted: true,
+          oldestTimestamp: oldest,
+        },
+      };
+    }
+
+    // Re-query local to include newly fetched entries
+    const refreshedRows = await baseEntryListQuery()
+      .where(and(...conditions))
+      .orderBy(desc(entries.published_at))
+      .limit(PAGE_SIZE)
+      .offset(cursor.offset);
+
+    const refreshedItems = refreshedRows.map(toEntryListItem);
+
+    let refreshedOldest = oldest;
+    for (const item of refreshedItems) {
+      if (item.published_at < refreshedOldest) {
+        refreshedOldest = item.published_at;
+      }
+    }
+
+    return {
+      items: refreshedItems,
+      nextCursor: {
+        offset: cursor.offset + refreshedItems.length,
+        remoteExhausted: !hasMore,
+        oldestTimestamp: refreshedOldest,
+      },
+    };
+  } catch {
+    // Offline or API error — return what we have locally
+    return {
+      items: localItems,
+      nextCursor: {
+        offset: cursor.offset + localItems.length,
+        remoteExhausted: false, // Don't permanently mark exhausted on network errors
+        oldestTimestamp: oldest,
+      },
+    };
+  }
+}
+
+/**
+ * All entries from the local store, ordered newest-first.
+ * Transparently fetches older entries from the API when local data runs out.
  */
 export function useEntries() {
-  return useLiveInfiniteQuery(
-    (q) =>
-      q
-        .from({ entry: entriesCollection })
-        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
-          eq(entry.feed.icon!.icon_id, icon.id),
-        )
-        .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry, icon }) => ({
-          id: entry.id,
-          title: entry.title,
-          url: entry.url,
-          author: entry.author,
-          published_at: entry.published_at,
-          status: entry.status,
-          starred: entry.starred,
-          reading_time: entry.reading_time,
-          feed_id: entry.feed_id,
-          feed: entry.feed,
-          cover_image_url: entry.cover_image_url,
-          category: entry.feed.category.title,
-          icon: {
-            data: icon.data,
-            mime_type: icon.mime_type,
-          },
-        })),
-    { pageSize: PAGE_SIZE },
-  );
+  return useInfiniteQuery({
+    queryKey: ["entries", "all"],
+    queryFn: async ({ pageParam }) => {
+      const { items, nextCursor } = await hybridQueryFn(
+        pageParam,
+        undefined,
+        {},
+      );
+      return { items, nextCursor };
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    initialPageParam: INITIAL_CURSOR,
+    select: (data) => ({
+      ...data,
+      pages: data.pages.map((p) => p.items),
+    }),
+  });
 }
 
 /**
  * Entries belonging to a single feed, ordered newest-first.
- *
- * @param feedId - The Miniflux feed ID to filter by.
  */
 export function useFeedEntries(feedId: number) {
-  return useLiveInfiniteQuery(
-    (q) =>
-      q
-        .from({ entry: entriesCollection })
-        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
-          eq(entry.feed.icon!.icon_id, icon.id),
-        )
-        .where(({ entry }) => eq(entry.feed_id, feedId))
-        .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry, icon }) => ({
-          id: entry.id,
-          title: entry.title,
-          url: entry.url,
-          author: entry.author,
-          published_at: entry.published_at,
-          status: entry.status,
-          starred: entry.starred,
-          reading_time: entry.reading_time,
-          feed_id: entry.feed_id,
-          feed: entry.feed,
-          cover_image_url: entry.cover_image_url,
-          category: entry.feed.category.title,
-          icon: {
-            data: icon.data,
-            mime_type: icon.mime_type,
-          },
-        })),
-    { pageSize: PAGE_SIZE },
-    [feedId],
-  );
+  return useInfiniteQuery({
+    queryKey: ["entries", "feed", feedId],
+    queryFn: async ({ pageParam }) => {
+      const { items, nextCursor } = await hybridQueryFn(
+        pageParam,
+        eq(entries.feed_id, feedId),
+        { feedId },
+      );
+      return { items, nextCursor };
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    initialPageParam: INITIAL_CURSOR,
+    select: (data) => ({
+      ...data,
+      pages: data.pages.map((p) => p.items),
+    }),
+  });
 }
 
 /**
  * Entries whose feed belongs to the given category, ordered newest-first.
- *
- * Filters on the nested `feed.category.id` field.
- *
- * @param categoryId - The Miniflux category ID to filter by.
  */
 export function useCategoryEntries(categoryId: number) {
-  return useLiveInfiniteQuery(
-    (q) =>
-      q
-        .from({ entry: entriesCollection })
-        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
-          eq(entry.feed.icon!.icon_id, icon.id),
-        )
-        .where(({ entry }) => eq(entry.feed.category.id, categoryId))
-        .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry, icon }) => ({
-          id: entry.id,
-          title: entry.title,
-          url: entry.url,
-          author: entry.author,
-          published_at: entry.published_at,
-          status: entry.status,
-          starred: entry.starred,
-          reading_time: entry.reading_time,
-          feed_id: entry.feed_id,
-          feed: entry.feed,
-          cover_image_url: entry.cover_image_url,
-          icon: {
-            data: icon.data,
-            mime_type: icon.mime_type,
-          },
-        })),
-    { pageSize: PAGE_SIZE },
-    [categoryId],
-  );
+  return useInfiniteQuery({
+    queryKey: ["entries", "category", categoryId],
+    queryFn: async ({ pageParam }) => {
+      const { items, nextCursor } = await hybridQueryFn(
+        pageParam,
+        eq(feeds.category_id, categoryId),
+        { categoryId },
+      );
+      return { items, nextCursor };
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    initialPageParam: INITIAL_CURSOR,
+    select: (data) => ({
+      ...data,
+      pages: data.pages.map((p) => p.items),
+    }),
+  });
 }
 
 /**
  * All unread entries, ordered newest-first.
  */
 export function useUnreadEntries() {
-  return useLiveInfiniteQuery(
-    (q) =>
-      q
-        .from({ entry: entriesCollection })
-        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
-          eq(entry.feed.icon!.icon_id, icon.id),
-        )
-        .where(({ entry }) => eq(entry.status, "unread"))
-        .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry, icon }) => ({
-          id: entry.id,
-          title: entry.title,
-          url: entry.url,
-          author: entry.author,
-          published_at: entry.published_at,
-          status: entry.status,
-          starred: entry.starred,
-          reading_time: entry.reading_time,
-          feed_id: entry.feed_id,
-          feed: entry.feed,
-          cover_image_url: entry.cover_image_url,
-          icon: {
-            data: icon.data,
-            mime_type: icon.mime_type,
-          },
-        })),
-    { pageSize: PAGE_SIZE },
-  );
+  return useInfiniteQuery({
+    queryKey: ["entries", "unread"],
+    queryFn: async ({ pageParam }) => {
+      const { items, nextCursor } = await hybridQueryFn(
+        pageParam,
+        eq(entries.status, "unread"),
+        { status: "unread" },
+      );
+      return { items, nextCursor };
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    initialPageParam: INITIAL_CURSOR,
+    select: (data) => ({
+      ...data,
+      pages: data.pages.map((p) => p.items),
+    }),
+  });
 }
 
 /**
  * All bookmarked / starred entries, ordered newest-first.
  */
 export function useStarredEntries() {
-  return useLiveInfiniteQuery(
-    (q) =>
-      q
-        .from({ entry: entriesCollection })
-        .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
-          eq(entry.feed.icon!.icon_id, icon.id),
-        )
-        .where(({ entry }) => eq(entry.starred, true))
-        .orderBy(({ entry }) => entry.published_at, "desc")
-        .select(({ entry, icon }) => ({
-          id: entry.id,
-          title: entry.title,
-          url: entry.url,
-          author: entry.author,
-          published_at: entry.published_at,
-          status: entry.status,
-          starred: entry.starred,
-          reading_time: entry.reading_time,
-          feed_id: entry.feed_id,
-          feed: entry.feed,
-          cover_image_url: entry.cover_image_url,
-          icon: {
-            data: icon.data,
-            mime_type: icon.mime_type,
-          },
-        })),
-    { pageSize: PAGE_SIZE },
-  );
+  return useInfiniteQuery({
+    queryKey: ["entries", "starred"],
+    queryFn: async ({ pageParam }) => {
+      const { items, nextCursor } = await hybridQueryFn(
+        pageParam,
+        eq(entries.starred, true),
+        { starred: true },
+      );
+      return { items, nextCursor };
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    initialPageParam: INITIAL_CURSOR,
+    select: (data) => ({
+      ...data,
+      pages: data.pages.map((p) => p.items),
+    }),
+  });
 }
 
 /**
  * Look up a single entry by its Miniflux ID.
  *
- * Returns the full entry row including `content` (which the list hooks
- * intentionally omit to keep list renders lightweight). Fetches from the
- * separate `entryDetailCollection` so the large HTML body is only loaded
- * when actually viewing an entry.
- *
- * @param entryId - The Miniflux entry ID, or `null`/`undefined` to disable
- *   the query (useful when the ID isn't available yet).
+ * Fetches entry metadata from local SQLite and lazily loads the HTML
+ * content (from local cache or API fallback).
  */
 export function useEntry(entryId: number | null | undefined) {
-  return useLiveQuery(
-    (q) =>
-      entryId != null
-        ? q
-            .from({ entry: entryDetailCollection })
-            .leftJoin({ icon: iconsCollection }, ({ entry, icon }) =>
-              eq(entry.feed.icon!.icon_id, icon.id),
-            )
-            .where(({ entry }) => eq(entry.id, entryId))
-            .findOne()
-            .select(({ entry, icon }) => ({
-              id: entry.id,
-              title: entry.title,
-              url: entry.url,
-              comments_url: entry.comments_url,
-              author: entry.author,
-              content: entry.content,
-              published_at: entry.published_at,
-              status: entry.status,
-              starred: entry.starred,
-              reading_time: entry.reading_time,
-              feed_id: entry.feed_id,
-              feed: entry.feed,
-              enclosures: entry.enclosures,
-              cover_image_url: entry.cover_image_url,
-              tags: entry.tags,
-              category: entry.feed.category.title,
-              icon: {
-                data: icon.data,
-                mime_type: icon.mime_type,
-              },
-            }))
-        : undefined,
-    [entryId],
-  );
+  const entryQuery = useQuery({
+    queryKey: ["entries", "detail", entryId],
+    queryFn: async () => {
+      if (entryId == null) return null;
+
+      const rows = await db
+        .select({
+          id: entries.id,
+          title: entries.title,
+          url: entries.url,
+          comments_url: entries.comments_url,
+          author: entries.author,
+          published_at: entries.published_at,
+          status: entries.status,
+          starred: entries.starred,
+          reading_time: entries.reading_time,
+          feed_id: entries.feed_id,
+          enclosures: entries.enclosures,
+          tags: entries.tags,
+          cover_image_url: entries.cover_image_url,
+          feed_title: feeds.title,
+          feed_site_url: feeds.site_url,
+          category_id: feeds.category_id,
+          category_title: categories.title,
+          icon_data: icons.data,
+          icon_mime_type: icons.mime_type,
+        })
+        .from(entries)
+        .innerJoin(feeds, eq(entries.feed_id, feeds.id))
+        .innerJoin(categories, eq(feeds.category_id, categories.id))
+        .leftJoin(icons, eq(feeds.icon_id, icons.id))
+        .where(eq(entries.id, entryId))
+        .limit(1);
+
+      return rows[0] ?? null;
+    },
+    enabled: entryId != null,
+  });
+
+  const contentQuery = useQuery({
+    queryKey: ["content", entryId],
+    queryFn: () => fetchEntryContent(entryId!),
+    enabled: entryId != null,
+  });
+
+  const entry = entryQuery.data;
+  if (!entry) return { data: null };
+
+  return {
+    data: {
+      id: entry.id,
+      title: entry.title,
+      url: entry.url,
+      comments_url: entry.comments_url,
+      author: entry.author,
+      published_at: entry.published_at,
+      status: entry.status,
+      starred: entry.starred,
+      reading_time: entry.reading_time,
+      feed_id: entry.feed_id,
+      enclosures: entry.enclosures,
+      tags: entry.tags,
+      cover_image_url: entry.cover_image_url,
+      content: contentQuery.data ?? null,
+      feed: {
+        title: entry.feed_title,
+        site_url: entry.feed_site_url,
+        category: {
+          id: entry.category_id,
+          title: entry.category_title,
+        },
+      },
+      icon: {
+        data: entry.icon_data ?? null,
+        mime_type: entry.icon_mime_type ?? null,
+      },
+      category: entry.category_title,
+    },
+  };
 }
 
 /**
  * Mark an entry as read when the article detail screen mounts.
  *
- * Performs an optimistic update on both the list and detail collections so
- * the feed list immediately reflects the change (dimmed card). The
- * collections' `onUpdate` handlers push the status change to the Miniflux
- * API in the background.
- *
- * Only fires once per entry
- * @param entryId - The Miniflux entry ID.
- * @param status  - The entry's current status from the live query.
+ * Performs an optimistic local update and queues the change for API sync.
+ * Only fires once per entry.
  */
 export function useMarkAsRead(entryId: number, status: string | undefined) {
   const alreadyMarked = useRef(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     alreadyMarked.current = false;
@@ -267,59 +488,86 @@ export function useMarkAsRead(entryId: number, status: string | undefined) {
 
     alreadyMarked.current = true;
 
-    try {
-      entriesCollection.update(entryId, (draft) => {
-        draft.status = "read";
+    (async () => {
+      await db
+        .update(entries)
+        .set({ status: "read" })
+        .where(eq(entries.id, entryId));
+
+      await db.insert(pendingMutations).values({
+        type: "status_change",
+        entry_id: entryId,
+        payload: { status: "read" },
+        created_at: new Date().toISOString(),
       });
-    } catch {
-      // Entry may not be loaded in the list collection yet.
-    }
-    entryDetailCollection.update(entryId, (draft) => {
-      draft.status = "read";
-    });
-  }, [entryId, status]);
+
+      invalidateEntries();
+      queryClient.invalidateQueries({
+        queryKey: ["entries", "detail", entryId],
+      });
+      flushMutationQueue().catch(() => {});
+    })();
+  }, [entryId, status, queryClient]);
 }
 
-export function useToggleReadStatus(
-  entryId: number,
-  status: EntryStatus | undefined,
-) {
-  return () => {
-    if (status == null) return;
+/**
+ * Returns a mutation for toggling an entry's read/unread status.
+ */
+export function useToggleReadStatus(entryId: number, currentStatus?: string) {
+  const queryClient = useQueryClient();
 
-    const newStatus: EntryStatus = status === "unread" ? "read" : "unread";
+  return useMutation({
+    mutationFn: async () => {
+      const newStatus = currentStatus === "unread" ? "read" : "unread";
 
-    entryDetailCollection.update(entryId, (draft) => {
-      draft.status = newStatus;
-    });
-    try {
-      entriesCollection.update(entryId, (draft) => {
-        draft.status = newStatus;
+      await db
+        .update(entries)
+        .set({ status: newStatus })
+        .where(eq(entries.id, entryId));
+
+      await db.insert(pendingMutations).values({
+        type: "status_change",
+        entry_id: entryId,
+        payload: { status: newStatus },
+        created_at: new Date().toISOString(),
       });
-    } catch {
-      // Entry may not be loaded in the list collection yet.
-    }
-  };
+
+      invalidateEntries();
+      queryClient.invalidateQueries({
+        queryKey: ["entries", "detail", entryId],
+      });
+      flushMutationQueue().catch(() => {});
+    },
+  });
 }
 
-export function useToggleBookmark(
-  entryId: number,
-  starred: boolean | undefined,
-) {
-  return () => {
-    if (starred == null) return;
+/**
+ * Returns a mutation for toggling an entry's bookmark/starred state.
+ */
+export function useToggleBookmark(entryId: number, currentStarred?: boolean) {
+  const queryClient = useQueryClient();
 
-    const newStarred = !starred;
+  return useMutation({
+    mutationFn: async () => {
+      const newStarred = !currentStarred;
 
-    entryDetailCollection.update(entryId, (draft) => {
-      draft.starred = newStarred;
-    });
-    try {
-      entriesCollection.update(entryId, (draft) => {
-        draft.starred = newStarred;
+      await db
+        .update(entries)
+        .set({ starred: newStarred })
+        .where(eq(entries.id, entryId));
+
+      await db.insert(pendingMutations).values({
+        type: "toggle_bookmark",
+        entry_id: entryId,
+        payload: { starred: newStarred },
+        created_at: new Date().toISOString(),
       });
-    } catch {
-      // Entry may not be loaded in the list collection yet.
-    }
-  };
+
+      invalidateEntries();
+      queryClient.invalidateQueries({
+        queryKey: ["entries", "detail", entryId],
+      });
+      flushMutationQueue().catch(() => {});
+    },
+  });
 }

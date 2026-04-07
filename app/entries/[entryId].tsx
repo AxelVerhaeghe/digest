@@ -75,7 +75,7 @@ export default function Article() {
         publishedAt={data.published_at}
         readingTime={data.reading_time}
         href={data.url}
-        iconData={data.icon.data}
+        iconData={data.icon.data ?? undefined}
       >
         <IconButton
           icon={
@@ -83,11 +83,11 @@ export default function Article() {
               ? "checkmark.circle"
               : "checkmark.circle.fill"
           }
-          onPress={toggleReadStatus}
+          onPress={() => toggleReadStatus.mutate()}
         />
         <IconButton
           icon={data.starred ? "bookmark.fill" : "bookmark"}
-          onPress={toggleBookmark}
+          onPress={() => toggleBookmark.mutate()}
         />
         <IconButton
           icon="square.and.arrow.up"

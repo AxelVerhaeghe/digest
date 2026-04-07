@@ -14,6 +14,13 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Colors, Fonts } from "@/constants/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
+import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
+import { db } from "@/db/database";
+import migrations from "@/drizzle/migrations";
+import { useSync } from "@/hooks/use-sync";
+import { registerBackgroundSync } from "@/sync/background-task";
+import { ActivityIndicator, View } from "react-native";
+import { ThemedText } from "@/components/ui/themed-text";
 
 const LightTheme = {
   ...DefaultTheme,
@@ -37,21 +44,67 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
+function AppContent() {
+  const sync = useSync();
+
+  useEffect(() => {
+    registerBackgroundSync().catch(() => {});
+  }, []);
+
+  if (sync.isInitialSync) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+        <ThemedText style={{ marginTop: 16 }}>Syncing your feeds...</ThemedText>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="entries/[entryId]"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="modal"
+          options={{ presentation: "modal", title: "Modal" }}
+        />
+      </Stack>
+      <StatusBar style="auto" />
+    </>
+  );
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts({
     ...Fonts.newsreader,
     ...Fonts.manrope,
   });
+  const { success: migrationsReady, error: migrationError } = useMigrations(
+    db,
+    migrations,
+  );
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if ((fontsLoaded || fontError) && migrationsReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, migrationsReady]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !migrationsReady) {
     return null;
+  }
+
+  if (migrationError) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ThemedText>Migration error: {migrationError.message}</ThemedText>
+      </View>
+    );
   }
 
   return (
@@ -59,18 +112,7 @@ export default function RootLayout() {
       value={colorScheme === "dark" ? CustomDarkTheme : LightTheme}
     >
       <QueryClientProvider client={queryClient}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="entries/[entryId]"
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="modal"
-            options={{ presentation: "modal", title: "Modal" }}
-          />
-        </Stack>
-        <StatusBar style="auto" />
+        <AppContent />
       </QueryClientProvider>
     </ThemeProvider>
   );

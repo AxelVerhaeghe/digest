@@ -19,8 +19,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default function FeedsScreen() {
-  const { data: categories } = useCategories();
-  const { data: feeds } = useFeeds();
+  const { data: categories = [] } = useCategories();
+  const { data: feeds = [] } = useFeeds();
   const { data: unreadByFeed } = useUnreadCounts();
   const { data: totalUnread = 0 } = useAllUnreadCount();
 
@@ -60,7 +60,7 @@ export default function FeedsScreen() {
                       <Link key={feed.id} href={`/feeds/${feed.id}`}>
                         <ThemedView style={styles.feedItem}>
                           <FeedIcon
-                            iconData={feed.icon.data}
+                            iconData={feed.icon.data ?? undefined}
                             feedName={feed.title}
                             size={20}
                           />

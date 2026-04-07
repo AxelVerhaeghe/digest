@@ -1,38 +1,36 @@
+import { useMemo } from "react";
 import type { ListRenderItemInfo } from "react-native";
 
 import { FeedCard } from "@/components/feed/feed-card";
 import { ThemedView } from "@/components/ui/themed-view";
-import type { useEntries } from "@/hooks/use-entries";
+import type { EntryListItem } from "@/hooks/use-entries";
 import { FlatList, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-type EntryListEntry = NonNullable<
-  ReturnType<typeof useEntries>["data"]
->[number];
+import type { InfiniteData } from "@tanstack/react-query";
 
 type Props = {
-  data: ReturnType<typeof useEntries>["data"];
+  data: InfiniteData<EntryListItem[]> | undefined;
   hasNextPage: boolean;
   fetchNextPage: () => void;
   refreshing?: boolean;
   onRefresh?: () => void;
 };
 
-function getItemKey(item: EntryListEntry) {
+function getItemKey(item: EntryListItem) {
   return String(item.id);
 }
 
-function renderItem({ item }: ListRenderItemInfo<EntryListEntry>) {
+function renderItem({ item }: ListRenderItemInfo<EntryListItem>) {
   return (
     <FeedCard
       coverImageUrl={item.cover_image_url}
       title={item.title}
       author={item.author}
-      category={item.category}
+      category={item.feed.category.title}
       feedName={item.feed.title}
       publishedAt={item.published_at}
       id={item.id}
-      status={item.status}
+      status={item.status as "read" | "unread" | "removed"}
     />
   );
 }
@@ -44,6 +42,11 @@ export function EntryList({
   refreshing,
   onRefresh,
 }: Props) {
+  const flatData = useMemo(
+    () => data?.pages.flatMap((page) => page) ?? [],
+    [data],
+  );
+
   const handleEndReached = () => {
     if (hasNextPage) {
       fetchNextPage();
@@ -54,7 +57,7 @@ export function EntryList({
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.container}>
         <FlatList
-          data={data}
+          data={flatData}
           keyExtractor={getItemKey}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}

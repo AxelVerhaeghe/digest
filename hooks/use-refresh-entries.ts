@@ -1,18 +1,17 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
 import { api } from "@/api";
+import { incrementalSync } from "@/sync/sync-engine";
 
 /**
  * Trigger a Miniflux feed refresh and re-sync entries locally.
  *
  * When `feedId` is provided, only that feed is refreshed on the server.
  * Otherwise all feeds are refreshed. After the server-side refresh
- * completes, the local entries cache is invalidated and awaited so
- * `isPending` stays `true` until fresh data has been fetched.
+ * completes, an incremental sync pulls new entries into SQLite and
+ * invalidates the relevant query keys.
  */
 export function useRefreshEntries(feedId?: number) {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async () => {
       if (feedId != null) {
@@ -20,7 +19,7 @@ export function useRefreshEntries(feedId?: number) {
       } else {
         await api.refreshAllFeeds();
       }
-      await queryClient.invalidateQueries({ queryKey: ["entries"] });
+      await incrementalSync();
     },
   });
 }

@@ -1,30 +1,54 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { eq, count as sqlCount } from "drizzle-orm";
 
-import { api } from "@/api";
+import { db } from "@/db/database";
+import { entries } from "@/db/schema";
 
-export const COUNTERS_QUERY_KEY = ["counters"] as const;
-
-export function formatUnreadCount(count: number): string {
-  return count >= 100 ? "99+" : String(count);
+export function formatUnreadCount(countValue: number): string {
+  return countValue >= 100 ? "99+" : String(countValue);
 }
 
-const unreadCountQueryOptions = queryOptions({
-  queryKey: COUNTERS_QUERY_KEY,
-  queryFn: ({ signal }) => api.getCounters(signal),
-  staleTime: 30_000,
-});
-
+/**
+ * Per-feed unread counts from the local database.
+ *
+ * Returns a `Record<string, number>` keyed by feed ID (as string, to
+ * match the previous implementation that keyed by string).
+ */
 export function useUnreadCounts() {
   return useQuery({
-    ...unreadCountQueryOptions,
-    select: (data) => data.unreads,
+    queryKey: ["unread-counts"],
+    queryFn: async (): Promise<Record<string, number>> => {
+      const rows = await db
+        .select({
+          feed_id: entries.feed_id,
+          count: sqlCount(),
+        })
+        .from(entries)
+        .where(eq(entries.status, "unread"))
+        .groupBy(entries.feed_id);
+
+      const result: Record<string, number> = {};
+      for (const row of rows) {
+        result[String(row.feed_id)] = row.count;
+      }
+      return result;
+    },
   });
 }
 
+/**
+ * Total unread count across all feeds.
+ */
 export function useAllUnreadCount() {
   return useQuery({
-    ...unreadCountQueryOptions,
-    select: (data) =>
-      Object.values(data.unreads).reduce((curr, acc) => (curr += acc), 0),
+    queryKey: ["unread-counts", "total"],
+    queryFn: async (): Promise<number> => {
+      const rows = await db
+        .select({ count: sqlCount() })
+        .from(entries)
+        .where(eq(entries.status, "unread"));
+
+      return rows[0]?.count ?? 0;
+    },
   });
 }

@@ -16,12 +16,48 @@ The React Compiler experiment is enabled. New Architecture is enabled.
 
 ### Architecture Principles
 
-- **Local-first:** All reads come from the local database. Network requests sync data
-  into the local store; the UI never waits on the network for rendering.
+- **Local-first:** All reads come from the local SQLite database via Drizzle ORM.
+  Network requests sync data into the local store; the UI never waits on the network
+  for rendering.
+- **Hybrid pagination:** Infinite-scroll lists read from local SQLite first. When local
+  data runs out, older entries are fetched on-demand from the Miniflux API, stored
+  locally, and returned seamlessly. This means the initial sync only needs ~1000
+  entries for a fast first launch, while the full history is accessible on scroll.
 - **Miniflux is the source of truth for feed management:** Adding/removing feeds,
   categories, and OPML import/export go through the Miniflux API.
 - **Read state syncs bidirectionally:** Mark-as-read/unread and starred status are
-  written locally first, then pushed to Miniflux when online.
+  written locally first (optimistic), queued in a `pending_mutations` table, then
+  pushed to Miniflux when online.
+- **Offline mutation queue:** All write operations (mark read, toggle bookmark) are
+  stored in SQLite and flushed to the API when connectivity is restored.
+
+### Data Architecture
+
+```
+┌─────────────┐     ┌──────────────┐     ┌───────────────┐
+│  UI (React)  │────▶│ TanStack     │────▶│  Drizzle ORM  │
+│  Components  │     │ Query hooks  │     │  (expo-sqlite) │
+└─────────────┘     └──────┬───────┘     └───────┬───────┘
+                           │                     │
+                    invalidateQueries()    local SQLite DB
+                           │                     │
+                    ┌──────┴───────┐     ┌───────┴───────┐
+                    │  Sync Engine │────▶│  Miniflux API  │
+                    │  (background)│     │  (self-hosted) │
+                    └──────────────┘     └───────────────┘
+```
+
+- **Drizzle ORM + expo-sqlite:** All local data (entries, feeds, categories, icons,
+  entry content, pending mutations, sync metadata) lives in a SQLite database with
+  WAL mode enabled.
+- **TanStack Query:** Provides cache management and UI reactivity. Hooks use
+  `useQuery` / `useInfiniteQuery` to read from SQLite. After any SQLite write,
+  `invalidateQueries()` triggers re-renders.
+- **Sync engine:** Handles initial sync (up to 1000 entries), incremental sync
+  (via `changed_after`), and on-demand fetching of older entries. Runs at app launch,
+  on connectivity restore, and periodically via background tasks.
+- **Mutation processor:** Flushes the `pending_mutations` queue to the Miniflux API,
+  batching status changes and processing bookmark toggles.
 
 ### Miniflux API
 
@@ -45,7 +81,8 @@ is via API token passed in the `X-Auth-Token` header. Key endpoints:
 | GET    | `/v1/entries?starred=true`  | Starred entries                 |
 
 Entries support query params: `status`, `direction`, `order`, `limit`, `offset`,
-`after`, `before`, `category_id`, `starred`, `search`.
+`after`, `before`, `published_before`, `published_after`, `changed_after`,
+`before_entry_id`, `after_entry_id`, `category_id`, `starred`, `search`.
 
 ## Build & Run Commands
 
@@ -63,6 +100,9 @@ npm run lint            # equivalent to: expo lint
 
 # Type-check (no separate script; run manually)
 npx tsc --noEmit
+
+# Generate Drizzle migration after schema changes
+npx drizzle-kit generate
 
 # Reset to fresh project scaffold
 npm run reset-project
@@ -97,34 +137,129 @@ Run tests matching a pattern: `npx jest -t "test name pattern"`
 ## Project Structure
 
 ```
-app/                    # Expo Router file-based routes
-  _layout.tsx           #   Root layout (Stack navigator + ThemeProvider)
-  modal.tsx             #   Modal screen
-  (tabs)/               #   Tab navigator group
-    _layout.tsx          #     Tab bar configuration
-    index.tsx            #     Home tab
-    explore.tsx          #     Explore tab
-components/             # Reusable UI components
-  ui/                   #   Generic primitives (no app domain knowledge)
+app/                        # Expo Router file-based routes
+  _layout.tsx               #   Root layout (migrations, sync, providers)
+  modal.tsx                 #   Modal screen
+  (tabs)/                   #   Tab navigator group
+    _layout.tsx             #     Tab bar configuration
+    index.tsx               #     Home tab (all entries)
+    feeds/
+      _layout.tsx           #     Feeds tab layout
+      index.tsx             #     Feed list
+      [feedId].tsx          #     Single feed entries
+  entries/
+    [entryId].tsx           #   Article detail screen
+api/                        # Miniflux API client (unchanged, no local state)
+  config.ts                 #   Environment-based API config
+  errors.ts                 #   ApiError class
+  index.ts                  #   Singleton client export
+  miniflux.ts               #   MinifluxClient class with all endpoints
+  request.ts                #   HTTP request helper
+  types.ts                  #   API request/response types
+db/                         # Local database layer
+  database.ts               #   expo-sqlite + drizzle() singleton (WAL mode)
+  schema.ts                 #   Drizzle table definitions (7 tables)
+  invalidate.ts             #   TanStack Query invalidation helpers
+drizzle/                    # Generated migrations (committed to VCS)
+  migrations.js             #   Migration index (imports .sql files)
+  0000_foamy_wind_dancer.sql #  Initial migration
+  meta/                     #   Drizzle Kit metadata
+sync/                       # Sync and offline mutation system
+  sync-engine.ts            #   Initial, incremental, and on-demand sync
+  mutation-processor.ts     #   Offline mutation queue flush
+  background-task.ts        #   expo-background-task registration
+hooks/                      # Custom React hooks
+  use-entries.ts            #   Entry list hooks (hybrid local/remote pagination)
+  use-feeds.ts              #   Feed queries (useQuery + Drizzle)
+  use-categories.ts         #   Category queries
+  use-unread-counts.ts      #   Local SQL unread counts
+  use-refresh-entries.ts    #   Pull-to-refresh (incremental sync)
+  use-sync.ts               #   Sync lifecycle management
+  use-connectivity.ts       #   Network state (expo-network)
+  use-color-scheme.ts       #   Native (re-exports RN hook)
+  use-color-scheme.web.ts   #   Web (hydration-safe variant)
+  use-theme-color.ts        #   Resolves theme-aware colors
+lib/                        # Shared utilities
+  query-client.ts           #   TanStack Query client singleton
+  article-html.ts           #   HTML rendering helpers
+  cover-image.ts            #   Cover image extraction from enclosures/content
+components/                 # Reusable UI components
+  article/                  #   Article detail components
+    article-header.tsx
+    article-hero.tsx
+  feed/                     #   Feed list components
+    entry-list.tsx          #     Infinite-scroll entry list (FlatList)
+    feed-card.tsx           #     Entry card in feed lists
+  category/                 #   Category components
+    all-articles-link.tsx
+  ui/                       #   Generic primitives
+    badge.tsx
     collapsible.tsx
-    icon-symbol.tsx     #     Android/web fallback (MaterialIcons)
-    icon-symbol.ios.tsx #     iOS-specific (SF Symbols)
-    themed-text.tsx     #     Theme-aware Text wrapper
-    themed-view.tsx     #     Theme-aware View wrapper
-  layout/               #   App shell / structural components
+    cover-image.tsx
+    dot-separator.tsx
+    feed-icon.tsx
+    icon-button.tsx
+    icon-symbol.tsx         #     Android/web fallback (MaterialIcons)
+    icon-symbol.ios.tsx     #     iOS-specific (SF Symbols)
+    skeleton.tsx
+    themed-text.tsx
+    themed-view.tsx
+  layout/                   #   App shell / structural components
     haptic-tab.tsx
     parallax-scroll-view.tsx
-  navigation/           #   Navigation-related components
+  navigation/               #   Navigation-related components
     external-link.tsx
-constants/              # Shared constants
-  theme.ts              #   Colors and Fonts (light/dark mode)
-hooks/                  # Custom React hooks
-  use-color-scheme.ts       # Native (re-exports RN hook)
-  use-color-scheme.web.ts   # Web (hydration-safe variant)
-  use-theme-color.ts        # Resolves theme-aware colors
-assets/                 # Static images and icons
-scripts/                # Utility scripts
+constants/                  # Shared constants
+  theme.ts                  #   Colors and Fonts (light/dark mode)
+assets/                     # Static images and icons
+scripts/                    # Utility scripts
 ```
+
+### Database Schema
+
+Seven tables in `db/schema.ts`:
+
+| Table               | Purpose                                            |
+| ------------------- | -------------------------------------------------- |
+| `categories`        | Feed categories synced from Miniflux               |
+| `icons`             | Feed favicons (base64 data + mime type)            |
+| `feeds`             | Subscribed feeds with FK to categories and icons   |
+| `entries`           | Article metadata (no content), FK to feeds         |
+| `entry_content`     | Full HTML content, fetched lazily, FK to entries   |
+| `pending_mutations` | Offline mutation queue (status changes, bookmarks) |
+| `sync_meta`         | Key-value store (last_sync_at, oldest_synced_at)   |
+
+Entries store metadata only. HTML content is in a separate `entry_content` table,
+loaded lazily when an article is opened (from local cache or API fallback).
+
+### Sync Strategy
+
+1. **Initial sync** (first launch): Fetches categories, feeds, icons, and the 1000
+   most recent entries. Stores `last_sync_at` and `oldest_synced_at` in `sync_meta`.
+2. **Incremental sync** (subsequent launches, background): Fetches entries changed
+   since `last_sync_at` using the `changed_after` API param. Also refreshes feeds
+   and categories.
+3. **On-demand older entries** (scroll past local cache): When an infinite-scroll list
+   runs out of local data, `fetchOlderEntries()` fetches a batch from the API using
+   `published_before`, stores them locally, and updates `oldest_synced_at`.
+4. **Mutation flush**: Pending local mutations are pushed to the API on connectivity
+   restore and after incremental sync.
+5. **Background sync**: Registered via `expo-background-task`, runs incremental sync
+   periodically (minimum interval: 15 minutes).
+
+### Drizzle Migrations
+
+Migrations use the idiomatic Drizzle + Expo approach:
+
+1. Edit `db/schema.ts`
+2. Run `npx drizzle-kit generate` to produce a new `.sql` file in `drizzle/`
+3. The `babel-plugin-inline-import` inlines `.sql` file contents at build time
+4. `useMigrations(db, migrations)` applies unapplied migrations on app startup
+5. Commit the generated `.sql` files and `drizzle/meta/` to version control
+
+The `babel.config.js` uses ESM `export default` syntax (required because
+`package.json` has `"type": "module"`), and `metro.config.js` adds `"sql"` to
+`config.resolver.sourceExts` so Metro can resolve `.sql` imports.
 
 ## Code Style Guidelines
 
@@ -141,8 +276,8 @@ scripts/                # Utility scripts
 
 Imports are organized in two groups separated by a blank line:
 
-1. **External packages** (react, react-native, expo-_, @react-navigation/_)
-2. **Internal modules** using `@/` alias (@/components/_, @/hooks/_, @/constants/\*)
+1. **External packages** (react, react-native, expo-\*, @react-navigation/\*)
+2. **Internal modules** using `@/` alias (@/components/\*, @/hooks/\*, @/constants/\*)
 
 Within each group, imports are sorted alphabetically. The VS Code settings enforce
 `source.organizeImports` and `source.sortMembers` on save.
@@ -214,14 +349,22 @@ Within each group, imports are sorted alphabetically. The VS Code settings enfor
 
 ## Key Dependencies
 
-| Package                        | Purpose                               |
-| ------------------------------ | ------------------------------------- |
-| `expo-router`                  | File-based routing                    |
-| `@react-navigation/*`          | Navigation primitives (tabs, stack)   |
-| `react-native-reanimated`      | Animations                            |
-| `react-native-gesture-handler` | Gesture handling                      |
-| `expo-haptics`                 | Haptic feedback (iOS)                 |
-| `expo-image`                   | Optimized image component             |
-| `expo-web-browser`             | In-app browser for external links     |
-| `expo-symbols`                 | Native SF Symbols (iOS)               |
-| `@expo/vector-icons`           | Material Icons fallback (Android/web) |
+| Package                        | Purpose                                    |
+| ------------------------------ | ------------------------------------------ |
+| `drizzle-orm`                  | Type-safe ORM for local SQLite             |
+| `expo-sqlite`                  | Native SQLite driver                       |
+| `@tanstack/react-query`        | Cache management, UI reactivity            |
+| `expo-router`                  | File-based routing                         |
+| `@react-navigation/*`          | Navigation primitives (tabs, stack)        |
+| `expo-network`                 | Connectivity detection                     |
+| `expo-background-task`         | Background sync scheduling                 |
+| `expo-task-manager`            | Background task definition                 |
+| `react-native-reanimated`      | Animations                                 |
+| `react-native-gesture-handler` | Gesture handling                           |
+| `expo-haptics`                 | Haptic feedback (iOS)                      |
+| `expo-image`                   | Optimized image component                  |
+| `expo-web-browser`             | In-app browser for external links          |
+| `expo-symbols`                 | Native SF Symbols (iOS)                    |
+| `@expo/vector-icons`           | Material Icons fallback (Android/web)      |
+| `babel-plugin-inline-import`   | Inlines .sql migration files at build time |
+| `drizzle-kit`                  | Migration generation (dev dependency)      |

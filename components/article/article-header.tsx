@@ -1,7 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { StyleSheet, View } from "react-native";
 
-import type { ExternalUrl } from "@/collections/schemas";
 import { ExternalLink } from "@/components/navigation/external-link";
 import { Badge } from "@/components/ui/badge";
 import { FeedIcon } from "@/components/ui/feed-icon";
@@ -20,7 +19,7 @@ type ArticleHeaderProps = PropsWithChildren<{
   author: string | null;
   publishedAt: string;
   readingTime: number;
-  href: ExternalUrl;
+  href: string;
   iconData?: string;
 }>;
 
