@@ -1,10 +1,15 @@
 import { Colors } from "@/constants/theme";
+import { sanitizeArticleHtml } from "@/lib/sanitize";
 
 /**
  * Builds a complete HTML document that renders article content with
  * theme-aware styling. Loads Newsreader (body) and Manrope (headings)
  * from Google Fonts CDN, falling back to system serif/sans-serif when
  * offline.
+ *
+ * The raw HTML content is sanitized before rendering using an allowlist
+ * that mirrors the Miniflux server-side sanitizer, providing
+ * defense-in-depth against tampered API responses or sanitizer bypasses.
  */
 export function buildArticleHtml(
   content: string | undefined,
@@ -12,6 +17,8 @@ export function buildArticleHtml(
   hasCoverImage?: boolean,
 ): string {
   if (!content) return "";
+
+  const sanitizedContent = sanitizeArticleHtml(content);
 
   const c = Colors[colorScheme];
 
@@ -210,6 +217,6 @@ ${
     });
   </script>
 </head>
-<body>${content}</body>
+<body>${sanitizedContent}</body>
 </html>`;
 }
