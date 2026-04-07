@@ -8,6 +8,9 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Release APK
@@ -64,3 +67,19 @@ jobs:
           name: digest-${{ steps.version.outputs.label }}.apk
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 90
+
+      - name: Rename APK
+        if: github.event.inputs.version_name != ''
+        run: |
+          mv android/app/build/outputs/apk/release/app-release.apk \
+            android/app/build/outputs/apk/release/digest-v${{ steps.version.outputs.label }}.apk
+
+      - name: Create GitHub Release
+        if: github.event.inputs.version_name != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.label }}" \
+            --title "v${{ steps.version.outputs.label }}" \
+            --generate-notes \
+            android/app/build/outputs/apk/release/digest-v${{ steps.version.outputs.label }}.apk
