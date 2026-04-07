@@ -1,5 +1,11 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+import type { Enclosure, EntryStatus } from "@/api/types";
+
+export type { Enclosure } from "@/api/types";
+
+export type MutationPayload = { status: EntryStatus } | { starred: boolean };
+
 export const categories = sqliteTable("categories", {
   id: integer().primaryKey(),
   user_id: integer().notNull(),
@@ -63,7 +69,7 @@ export const entries = sqliteTable(
     published_at: text().notNull(),
     created_at: text().notNull(),
     changed_at: text(),
-    status: text().notNull().default("unread"),
+    status: text().notNull().default("unread").$type<EntryStatus>(),
     share_code: text().notNull().default(""),
     starred: integer({ mode: "boolean" }).notNull().default(false),
     reading_time: integer().notNull().default(0),
@@ -92,7 +98,7 @@ export const pendingMutations = sqliteTable(
     id: integer().primaryKey({ autoIncrement: true }),
     type: text().notNull(),
     entry_id: integer().notNull(),
-    payload: text({ mode: "json" }).notNull().$type<Record<string, unknown>>(),
+    payload: text({ mode: "json" }).notNull().$type<MutationPayload>(),
     created_at: text().notNull(),
   },
   (table) => [index("pending_mutations_created_at_idx").on(table.created_at)],
@@ -102,16 +108,6 @@ export const syncMeta = sqliteTable("sync_meta", {
   key: text().primaryKey(),
   value: text().notNull(),
 });
-
-export type Enclosure = {
-  id: number;
-  user_id: number;
-  entry_id: number;
-  url: string;
-  mime_type: string;
-  size: number;
-  media_progression: number;
-};
 
 export type EntryRow = typeof entries.$inferSelect;
 export type FeedRow = typeof feeds.$inferSelect;

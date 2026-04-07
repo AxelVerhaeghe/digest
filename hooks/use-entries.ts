@@ -20,6 +20,7 @@ import { invalidateEntries } from "@/db/invalidate";
 import { fetchEntryContent, fetchOlderEntries } from "@/sync/sync-engine";
 import type { FetchOlderFilters } from "@/sync/sync-engine";
 import { flushMutationQueue } from "@/sync/mutation-processor";
+import type { EntryStatus } from "@/api/types";
 
 /** Number of entries loaded per page in infinite-scroll lists. */
 const PAGE_SIZE = 20;
@@ -53,7 +54,7 @@ export type EntryListItem = {
   url: string;
   author: string;
   published_at: string;
-  status: string;
+  status: EntryStatus;
   starred: boolean;
   reading_time: number;
   feed_id: number;
@@ -81,7 +82,7 @@ function toEntryListItem(row: {
   url: string;
   author: string;
   published_at: string;
-  status: string;
+  status: EntryStatus;
   starred: boolean;
   reading_time: number;
   feed_id: number;
@@ -428,7 +429,10 @@ export function useEntry(entryId: number | null | undefined) {
 
   const contentQuery = useQuery({
     queryKey: ["content", entryId],
-    queryFn: () => fetchEntryContent(entryId!),
+    queryFn: () => {
+      if (entryId == null) throw new Error("entryId is required");
+      return fetchEntryContent(entryId);
+    },
     enabled: entryId != null,
   });
 
@@ -474,7 +478,10 @@ export function useEntry(entryId: number | null | undefined) {
  * Performs an optimistic local update and queues the change for API sync.
  * Only fires once per entry.
  */
-export function useMarkAsRead(entryId: number, status: string | undefined) {
+export function useMarkAsRead(
+  entryId: number,
+  status: EntryStatus | undefined,
+) {
   const alreadyMarked = useRef(false);
   const queryClient = useQueryClient();
 
@@ -513,7 +520,10 @@ export function useMarkAsRead(entryId: number, status: string | undefined) {
 /**
  * Returns a mutation for toggling an entry's read/unread status.
  */
-export function useToggleReadStatus(entryId: number, currentStatus?: string) {
+export function useToggleReadStatus(
+  entryId: number,
+  currentStatus?: EntryStatus,
+) {
   const queryClient = useQueryClient();
 
   return useMutation({

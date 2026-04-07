@@ -65,6 +65,15 @@ function buildUrl(
   return url.toString();
 }
 
+function hasErrorMessage(value: unknown): value is { error_message: string } {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    "error_message" in value &&
+    typeof (value as Record<string, unknown>).error_message === "string"
+  );
+}
+
 /**
  * Try to parse a Miniflux JSON error body (`{ "error_message": "..." }`).
  * Returns `null` when the body is empty or not valid JSON.
@@ -73,8 +82,8 @@ async function parseErrorBody(response: Response): Promise<string | null> {
   try {
     const body = await response.text();
     if (!body) return null;
-    const json = JSON.parse(body) as { error_message?: string };
-    return json.error_message ?? null;
+    const json: unknown = JSON.parse(body);
+    return hasErrorMessage(json) ? json.error_message : null;
   } catch {
     return null;
   }
@@ -94,10 +103,18 @@ async function parseErrorBody(response: Response): Promise<string | null> {
  *   call sites).
  * - Throws {@link ApiError} for any non-2xx status.
  */
+export async function request(
+  config: RequestConfig,
+  options: RequestOptions,
+): Promise<void>;
 export async function request<T>(
   config: RequestConfig,
   options: RequestOptions,
-): Promise<T> {
+): Promise<T>;
+export async function request<T>(
+  config: RequestConfig,
+  options: RequestOptions,
+): Promise<T | void> {
   const { method = "GET", path, query, body, signal } = options;
   const url = buildUrl(config.baseUrl, path, query);
 
@@ -131,7 +148,7 @@ export async function request<T>(
 
   // 204 No Content — nothing to parse.
   if (response.status === 204) {
-    return undefined as T;
+    return undefined;
   }
 
   return (await response.json()) as T;

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { api } from "@/api";
 import type {
+  Enclosure,
   Entry,
   EntryQueryParams,
   Feed,
@@ -23,7 +24,6 @@ import {
   icons,
   syncMeta,
 } from "@/db/schema";
-import type { Enclosure } from "@/db/schema";
 import { getCoverImage } from "@/lib/cover-image";
 import { flushMutationQueue } from "@/sync/mutation-processor";
 
@@ -186,10 +186,7 @@ async function syncFeeds(signal?: AbortSignal): Promise<void> {
  * Stores content separately in entry_content.
  */
 async function upsertEntry(entry: Entry): Promise<void> {
-  const coverImage = getCoverImage(
-    entry.enclosures as Enclosure[] | null,
-    entry.content,
-  );
+  const coverImage = getCoverImage(entry.enclosures, entry.content);
 
   await db
     .insert(entries)
@@ -209,7 +206,7 @@ async function upsertEntry(entry: Entry): Promise<void> {
       share_code: entry.share_code,
       starred: entry.starred,
       reading_time: entry.reading_time,
-      enclosures: entry.enclosures as Enclosure[] | null,
+      enclosures: entry.enclosures,
       tags: entry.tags ?? null,
       cover_image_url: coverImage,
     })
@@ -227,7 +224,7 @@ async function upsertEntry(entry: Entry): Promise<void> {
         share_code: entry.share_code,
         starred: entry.starred,
         reading_time: entry.reading_time,
-        enclosures: entry.enclosures as Enclosure[] | null,
+        enclosures: entry.enclosures,
         tags: entry.tags ?? null,
         cover_image_url: coverImage,
       },

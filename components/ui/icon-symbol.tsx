@@ -29,7 +29,7 @@ const MAPPING = {
   "bookmark.fill": "bookmark",
   "square.and.arrow.up": "share",
   newspaper: "article",
-} as IconMapping;
+} satisfies Partial<IconMapping>;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.

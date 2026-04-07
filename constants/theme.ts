@@ -111,7 +111,7 @@ export const Fonts = {
     Newsreader_600SemiBold,
     Newsreader_700Bold,
     Newsreader_700Bold_Italic,
-  } as Record<string, FontSource>,
+  } satisfies Record<string, FontSource>,
 
   /**
    * Font map to pass to `useFonts()` for loading Manrope variants.
@@ -122,7 +122,7 @@ export const Fonts = {
     Manrope_500Medium,
     Manrope_600SemiBold,
     Manrope_700Bold,
-  } as Record<string, FontSource>,
+  } satisfies Record<string, FontSource>,
 
   /**
    * Resolved font family names for use in styles.

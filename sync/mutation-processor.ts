@@ -1,12 +1,15 @@
 import { eq, asc } from "drizzle-orm";
 
 import { api } from "@/api";
+import { ApiError } from "@/api/errors";
 import type { EntryStatus } from "@/api/types";
 import { db } from "@/db/database";
 import { pendingMutations } from "@/db/schema";
 import { invalidateEntries } from "@/db/invalidate";
 
-type MutationPayload = { status: EntryStatus } | { starred: boolean };
+function isClientError(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500;
+}
 
 /**
  * Flush all pending mutations to the Miniflux API.
@@ -33,7 +36,7 @@ export async function flushMutationQueue(): Promise<void> {
   const bookmarkMutations: { entryId: number; rowId: number }[] = [];
 
   for (const row of pending) {
-    const payload = row.payload as MutationPayload;
+    const { payload } = row;
 
     if (row.type === "status_change" && "status" in payload) {
       const existing = statusBatches.get(payload.status);
@@ -58,14 +61,7 @@ export async function flushMutationQueue(): Promise<void> {
         await db.delete(pendingMutations).where(eq(pendingMutations.id, rowId));
       }
     } catch (error: unknown) {
-      const isClientError =
-        error instanceof Error &&
-        "status" in error &&
-        typeof (error as { status: unknown }).status === "number" &&
-        (error as { status: number }).status >= 400 &&
-        (error as { status: number }).status < 500;
-
-      if (isClientError) {
+      if (isClientError(error)) {
         for (const rowId of batch.rowIds) {
           await db
             .delete(pendingMutations)
@@ -84,14 +80,7 @@ export async function flushMutationQueue(): Promise<void> {
         .delete(pendingMutations)
         .where(eq(pendingMutations.id, mutation.rowId));
     } catch (error: unknown) {
-      const isClientError =
-        error instanceof Error &&
-        "status" in error &&
-        typeof (error as { status: unknown }).status === "number" &&
-        (error as { status: number }).status >= 400 &&
-        (error as { status: number }).status < 500;
-
-      if (isClientError) {
+      if (isClientError(error)) {
         await db
           .delete(pendingMutations)
           .where(eq(pendingMutations.id, mutation.rowId));

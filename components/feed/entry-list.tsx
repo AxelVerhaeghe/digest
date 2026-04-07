@@ -30,7 +30,7 @@ function renderItem({ item }: ListRenderItemInfo<EntryListItem>) {
       feedName={item.feed.title}
       publishedAt={item.published_at}
       id={item.id}
-      status={item.status as "read" | "unread" | "removed"}
+      status={item.status}
     />
   );
 }
