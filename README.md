@@ -1,50 +1,78 @@
-# Welcome to your Expo app 👋
+# Digest
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A local-first RSS reader for iOS and Android. Digest is a mobile-friendly frontend for [Miniflux](https://miniflux.app/) that stores everything locally in SQLite so you can read your feeds offline. Syncing happens in the background when you have a connection.
 
-## Get started
+## Why
 
-1. Install dependencies
+Miniflux is great, but its web UI isn't designed for phones. Digest gives you a native mobile experience on top of your self-hosted Miniflux instance, with the added benefit of offline reading. Articles, feeds, and read state are all cached locally -- the app never blocks on the network to show you content.
 
-   ```bash
-   npm install
-   ```
+## How it works
 
-2. Start the app
+- All data lives in a local SQLite database (via Drizzle ORM + expo-sqlite). The UI always reads from the local DB.
+- On first launch, the app syncs your most recent ~1000 entries. After that, incremental syncs pull in only what's changed.
+- When you scroll past what's stored locally, older entries are fetched on-demand from Miniflux and cached for next time.
+- Mark-as-read, starred, and other mutations are applied locally first (optimistic), queued, and pushed to Miniflux when you're back online.
+- Background sync runs periodically so the app stays fresh even if you haven't opened it in a while.
 
-   ```bash
-   npx expo start
-   ```
+## Prerequisites
 
-In the output, you'll find options to open the app in a
+You'll need a running [Miniflux](https://miniflux.app/) instance and an API token. Miniflux is self-hosted -- see their docs for setup.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Getting started
 
 ```bash
-npm run reset-project
+npm install
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then open the app on your device or simulator. Platform shortcuts:
 
-## Learn more
+```bash
+npm run ios
+npm run android
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Project structure
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```
+app/           File-based routes (Expo Router)
+api/           Miniflux API client
+db/            SQLite database, Drizzle schema, query invalidation
+sync/          Sync engine, offline mutation queue, background tasks
+hooks/         React hooks (entries, feeds, categories, sync, etc.)
+components/    UI components (article, feed, category, shared primitives)
+constants/     Theme colors and fonts
+lib/           Utilities (query client, HTML helpers, image extraction)
+drizzle/       Generated SQL migrations (committed to git)
+```
 
-## Join the community
+## Tech stack
 
-Join our community of developers creating universal apps.
+- React Native 0.81 / Expo SDK 54 / React 19
+- TypeScript (strict mode)
+- Drizzle ORM + expo-sqlite for local storage
+- TanStack Query for cache and UI reactivity
+- Expo Router (file-based routing) + React Navigation v7
+- Background sync via expo-background-task
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Development
+
+Lint:
+
+```bash
+npm run lint
+```
+
+Type-check:
+
+```bash
+npx tsc --noEmit
+```
+
+After changing the database schema in `db/schema.ts`, generate a new migration:
+
+```bash
+npx drizzle-kit generate
+```
+
+Commit the generated `.sql` files and `drizzle/meta/` directory.
