@@ -23,6 +23,7 @@ const OPACITY_DEFAULT = 1;
 
 type IconButtonProps = Omit<PressableProps, "style"> & {
   icon: ComponentProps<typeof IconSymbol>["name"];
+  variant?: "default" | "ghost" | "muted";
   lightColor?: string;
   darkColor?: string;
   haptic?: boolean;
@@ -31,6 +32,7 @@ type IconButtonProps = Omit<PressableProps, "style"> & {
 
 export function IconButton({
   icon,
+  variant = "default",
   lightColor,
   darkColor,
   haptic = true,
@@ -40,7 +42,8 @@ export function IconButton({
   style,
   ...rest
 }: IconButtonProps) {
-  const backgroundColor = useThemeColor({}, "surfaceContainerHigh");
+  const surfaceBg = useThemeColor({}, "surfaceContainerHigh");
+  const surface = useThemeColor({}, "surface");
   const borderColor = useThemeColor({}, "outlineVariant");
   const iconColor = useThemeColor(
     { light: lightColor, dark: darkColor },
@@ -54,6 +57,14 @@ export function IconButton({
     transform: [{ scale: scale.value }],
     opacity: opacity.value,
   }));
+
+  const variantStyleMap = {
+    default: [{ backgroundColor: surfaceBg, borderColor }],
+    muted: [styles.muted, { backgroundColor: surface }],
+    ghost: undefined,
+  };
+
+  const variantStyle = variantStyleMap[variant];
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
@@ -75,7 +86,7 @@ export function IconButton({
 
           onPressOut?.(ev);
         }}
-        style={[styles.button, { backgroundColor, borderColor }, style]}
+        style={[styles.button, variantStyle, style]}
         {...rest}
       >
         <IconSymbol name={icon} size={ICON_SIZE} color={iconColor} />
@@ -93,8 +104,11 @@ const styles = StyleSheet.create({
     width: BUTTON_SIZE,
     height: BUTTON_SIZE,
     borderRadius: BUTTON_SIZE / 2,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
+  },
+  muted: {
+    opacity: 0.8,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });

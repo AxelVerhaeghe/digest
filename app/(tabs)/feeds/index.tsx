@@ -40,7 +40,7 @@ export default function FeedsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedView style={styles.allArticlesLink}>
             <AllArticlesLink unreadCount={totalUnread} />

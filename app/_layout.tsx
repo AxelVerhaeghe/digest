@@ -4,7 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "@expo-google-fonts/newsreader";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -21,6 +21,7 @@ import { useSync } from "@/hooks/use-sync";
 import { registerBackgroundSync } from "@/sync/background-task";
 import { ActivityIndicator, View } from "react-native";
 import { ThemedText } from "@/components/ui/themed-text";
+import { IconButton } from "@/components/ui/icon-button";
 
 const LightTheme = {
   ...DefaultTheme,
@@ -66,11 +67,30 @@ function AppContent() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="entries/[entryId]"
-          options={{ headerShown: false }}
+          options={{
+            title: "",
+            headerTransparent: true,
+            headerShadowVisible: false,
+            headerBackVisible: false,
+            headerLeft: ({ canGoBack }) =>
+              canGoBack && (
+                <IconButton
+                  icon="arrow.left"
+                  variant="muted"
+                  onPressIn={() => router.back()}
+                />
+              ),
+          }}
         />
         <Stack.Screen
-          name="modal"
-          options={{ presentation: "modal", title: "Modal" }}
+          name="filter"
+          options={{
+            presentation: "formSheet",
+            title: "Filters",
+            sheetAllowedDetents: [0.35],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 16,
+          }}
         />
       </Stack>
       <StatusBar style="auto" />

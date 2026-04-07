@@ -6,7 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { and, desc, eq, lt, SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, SQL } from "drizzle-orm";
 
 import { db } from "@/db/database";
 import {
@@ -577,6 +577,84 @@ export function useToggleBookmark(entryId: number, currentStarred?: boolean) {
       queryClient.invalidateQueries({
         queryKey: ["entries", "detail", entryId],
       });
+      flushMutationQueue().catch(() => {});
+    },
+  });
+}
+
+/**
+ * Returns a mutation that marks all unread entries for a given feed as read.
+ *
+ * Performs a local batch update, queues pending mutations for each affected
+ * entry, and flushes the mutation queue.
+ */
+export function useMarkAllFeedEntriesRead(feedId: number) {
+  return useMutation({
+    mutationFn: async () => {
+      const unreadRows = await db
+        .select({ id: entries.id })
+        .from(entries)
+        .where(and(eq(entries.feed_id, feedId), eq(entries.status, "unread")));
+
+      if (unreadRows.length === 0) return;
+
+      const ids = unreadRows.map((r) => r.id);
+
+      await db
+        .update(entries)
+        .set({ status: "read" })
+        .where(inArray(entries.id, ids));
+
+      const now = new Date().toISOString();
+      await db.insert(pendingMutations).values(
+        ids.map((id) => ({
+          type: "status_change",
+          entry_id: id,
+          payload: { status: "read" as const },
+          created_at: now,
+        })),
+      );
+
+      invalidateEntries();
+      flushMutationQueue().catch(() => {});
+    },
+  });
+}
+
+/**
+ * Returns a mutation that marks all unread entries (across all feeds) as read.
+ *
+ * Performs a local batch update, queues pending mutations for each affected
+ * entry, and flushes the mutation queue.
+ */
+export function useMarkAllEntriesRead() {
+  return useMutation({
+    mutationFn: async () => {
+      const unreadRows = await db
+        .select({ id: entries.id })
+        .from(entries)
+        .where(eq(entries.status, "unread"));
+
+      if (unreadRows.length === 0) return;
+
+      const ids = unreadRows.map((r) => r.id);
+
+      await db
+        .update(entries)
+        .set({ status: "read" })
+        .where(inArray(entries.id, ids));
+
+      const now = new Date().toISOString();
+      await db.insert(pendingMutations).values(
+        ids.map((id) => ({
+          type: "status_change",
+          entry_id: id,
+          payload: { status: "read" as const },
+          created_at: now,
+        })),
+      );
+
+      invalidateEntries();
       flushMutationQueue().catch(() => {});
     },
   });

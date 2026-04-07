@@ -5,7 +5,6 @@ import { FeedCard } from "@/components/feed/feed-card";
 import { ThemedView } from "@/components/ui/themed-view";
 import type { EntryListItem } from "@/hooks/use-entries";
 import { FlatList, StyleSheet } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import type { InfiniteData } from "@tanstack/react-query";
 
 type Props = {
@@ -55,21 +54,19 @@ export function EntryList({
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.container}>
-        <FlatList
-          data={flatData}
-          keyExtractor={getItemKey}
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.5}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          initialNumToRender={4}
-          maxToRenderPerBatch={3}
-          windowSize={5}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-        />
-      </SafeAreaView>
+      <FlatList
+        data={flatData}
+        keyExtractor={getItemKey}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        renderItem={renderItem}
+        contentContainerStyle={styles.listContent}
+        initialNumToRender={4}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+      />
     </ThemedView>
   );
 }

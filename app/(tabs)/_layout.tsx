@@ -5,29 +5,34 @@ import { StyleSheet } from "react-native";
 
 import { HapticTab } from "@/components/layout/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
+import { Colors, Fonts } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].primary,
-        headerShown: false,
+        tabBarActiveTintColor: theme.primary,
+        headerShown: true,
+        headerStyle: { backgroundColor: theme.surface },
+        headerTitleStyle: { fontFamily: Fonts.families.newsreaderItalic },
+        headerTintColor: theme.onSurface,
+        headerShadowVisible: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: Colors[colorScheme ?? "light"].surface,
+          backgroundColor: theme.surface,
           borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: Colors[colorScheme ?? "light"].outlineVariant,
+          borderTopColor: theme.outlineVariant,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "All",
+          title: "All Articles",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="book.fill" color={color} />
           ),
@@ -37,6 +42,7 @@ export default function TabLayout() {
         name="feeds"
         options={{
           title: "Feeds",
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="list.bullet" color={color} />
           ),

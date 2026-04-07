@@ -48,3 +48,37 @@ export function useFeeds() {
     },
   });
 }
+
+/**
+ * A single feed from the local store, joined with its icon.
+ */
+export function useFeed(feedId: number) {
+  return useQuery({
+    queryKey: ["feeds", feedId],
+    queryFn: async () => {
+      const rows = await db
+        .select({
+          id: feeds.id,
+          title: feeds.title,
+          icon_data: icons.data,
+          icon_mime_type: icons.mime_type,
+        })
+        .from(feeds)
+        .leftJoin(icons, eq(feeds.icon_id, icons.id))
+        .where(eq(feeds.id, feedId))
+        .limit(1);
+
+      const row = rows[0];
+      if (!row) return null;
+
+      return {
+        id: row.id,
+        title: row.title,
+        icon: {
+          data: row.icon_data,
+          mime_type: row.icon_mime_type,
+        },
+      };
+    },
+  });
+}
