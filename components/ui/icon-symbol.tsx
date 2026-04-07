@@ -31,6 +31,7 @@ const MAPPING = {
   "checkmark.message": "done-all",
   bookmark: "bookmark-border",
   "bookmark.fill": "bookmark",
+  "slider.horizontal.3": "tune",
   "square.and.arrow.up": "share",
   newspaper: "article",
 } satisfies Partial<IconMapping>;

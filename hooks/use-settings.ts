@@ -9,10 +9,12 @@ export type StatusFilter = "all" | "unread";
 
 const SETTINGS_KEYS = {
   statusFilter: "status_filter",
+  markAsReadOnScroll: "mark_as_read_on_scroll",
 } as const;
 
 const DEFAULTS = {
   statusFilter: "all" as StatusFilter,
+  markAsReadOnScroll: false,
 } as const;
 
 async function getSetting(key: string): Promise<string | null> {
@@ -51,6 +53,27 @@ export function useUpdateStatusFilter() {
     onSuccess: () => {
       invalidateSettings();
       invalidateEntries();
+    },
+  });
+}
+
+export function useMarkAsReadOnScroll() {
+  return useQuery({
+    queryKey: ["settings", SETTINGS_KEYS.markAsReadOnScroll],
+    queryFn: async (): Promise<boolean> => {
+      const value = await getSetting(SETTINGS_KEYS.markAsReadOnScroll);
+      return value === "true";
+    },
+  });
+}
+
+export function useUpdateMarkAsReadOnScroll() {
+  return useMutation({
+    mutationFn: async (value: boolean) => {
+      await upsertSetting(SETTINGS_KEYS.markAsReadOnScroll, String(value));
+    },
+    onSuccess: () => {
+      invalidateSettings();
     },
   });
 }

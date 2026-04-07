@@ -4,10 +4,11 @@ import { EntryList } from "@/components/feed/entry-list";
 import { HeaderActions } from "@/components/feed/feed-top-bar";
 import { useEntries, useMarkAllEntriesRead } from "@/hooks/use-entries";
 import { useRefreshEntries } from "@/hooks/use-refresh-entries";
-import { useStatusFilter } from "@/hooks/use-settings";
+import { useMarkAsReadOnScroll, useStatusFilter } from "@/hooks/use-settings";
 
 export default function HomeScreen() {
   const { data: statusFilter = "all" } = useStatusFilter();
+  const { data: markAsReadOnScroll = false } = useMarkAsReadOnScroll();
   const entries = useEntries(statusFilter);
   const { isPending, mutate } = useRefreshEntries();
   const markAllRead = useMarkAllEntriesRead();
@@ -19,12 +20,17 @@ export default function HomeScreen() {
           headerRight: () => (
             <HeaderActions
               onMarkAllRead={() => markAllRead.mutate()}
-              onFilterPress={() => router.push("/filter")}
+              onFilterPress={() => router.push("/preferences")}
             />
           ),
         }}
       />
-      <EntryList {...entries} refreshing={isPending} onRefresh={mutate} />
+      <EntryList
+        {...entries}
+        refreshing={isPending}
+        onRefresh={mutate}
+        markAsReadOnScroll={markAsReadOnScroll}
+      />
     </>
   );
 }

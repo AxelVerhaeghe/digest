@@ -6,7 +6,14 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: "default" | "title" | "defaultSemiBold" | "subtitle" | "link";
+  type?:
+    | "default"
+    | "title"
+    | "defaultSemiBold"
+    | "subtitle"
+    | "link"
+    | "label"
+    | "caption";
 };
 
 export function ThemedText({
@@ -31,6 +38,8 @@ export function ThemedText({
         type === "defaultSemiBold" ? styles.defaultSemiBold : undefined,
         type === "subtitle" ? styles.subtitle : undefined,
         type === "link" ? [styles.link, { color: linkColor }] : undefined,
+        type === "label" ? styles.label : undefined,
+        type === "caption" ? styles.caption : undefined,
         style,
       ]}
       {...rest}
@@ -62,5 +71,17 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     fontSize: 16,
     fontFamily: Fonts.families.newsreader,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontFamily: Fonts.families.manropeSemiBold,
+  },
+  caption: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: Fonts.families.manrope,
   },
 });

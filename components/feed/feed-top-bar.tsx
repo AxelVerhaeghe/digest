@@ -19,7 +19,7 @@ export function HeaderActions({
         onPress={onMarkAllRead}
       />
       <IconButton
-        icon="line.3.horizontal.decrease"
+        icon="slider.horizontal.3"
         variant="ghost"
         onPress={onFilterPress}
       />

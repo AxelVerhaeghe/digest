@@ -83,11 +83,11 @@ function AppContent() {
           }}
         />
         <Stack.Screen
-          name="filter"
+          name="preferences"
           options={{
             presentation: "formSheet",
-            title: "Filters",
-            sheetAllowedDetents: [0.35],
+            title: "Preferences",
+            sheetAllowedDetents: [0.7],
             sheetGrabberVisible: true,
             sheetCornerRadius: 16,
           }}

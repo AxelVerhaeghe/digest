@@ -5,13 +5,14 @@ import { HeaderActions } from "@/components/feed/feed-top-bar";
 import { useFeedEntries, useMarkAllFeedEntriesRead } from "@/hooks/use-entries";
 import { useFeed } from "@/hooks/use-feeds";
 import { useRefreshEntries } from "@/hooks/use-refresh-entries";
-import { useStatusFilter } from "@/hooks/use-settings";
+import { useMarkAsReadOnScroll, useStatusFilter } from "@/hooks/use-settings";
 
 export default function Feed() {
   const { feedId } = useLocalSearchParams<{ feedId: string }>();
   const id = parseInt(feedId);
 
   const { data: statusFilter = "all" } = useStatusFilter();
+  const { data: markAsReadOnScroll = false } = useMarkAsReadOnScroll();
   const { data: feed } = useFeed(id);
   const entries = useFeedEntries(id, statusFilter);
   const { isPending, mutate } = useRefreshEntries(id);
@@ -25,12 +26,17 @@ export default function Feed() {
           headerRight: () => (
             <HeaderActions
               onMarkAllRead={() => markAllRead.mutate()}
-              onFilterPress={() => router.push("/filter")}
+              onFilterPress={() => router.push("/preferences")}
             />
           ),
         }}
       />
-      <EntryList {...entries} refreshing={isPending} onRefresh={mutate} />
+      <EntryList
+        {...entries}
+        refreshing={isPending}
+        onRefresh={mutate}
+        markAsReadOnScroll={markAsReadOnScroll}
+      />
     </>
   );
 }

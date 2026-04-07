@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import {
   useInfiniteQuery,
@@ -186,6 +186,37 @@ function patchEntryStatusInCache(
       };
     },
   );
+}
+
+/**
+ * Mark a single entry as read locally and queue the change for API sync.
+ *
+ * Shared by `useMarkAsRead` (article detail) and `useMarkAsReadOnScrollHandler`
+ * (mark-on-scroll). Uses cache patching so entries remain visible in
+ * unread-filtered lists with updated opacity.
+ */
+async function markEntryAsRead(
+  queryClient: QueryClient,
+  entryId: number,
+): Promise<void> {
+  await db
+    .update(entries)
+    .set({ status: "read" })
+    .where(eq(entries.id, entryId));
+
+  await db.insert(pendingMutations).values({
+    type: "status_change",
+    entry_id: entryId,
+    payload: { status: "read" },
+    created_at: new Date().toISOString(),
+  });
+
+  patchEntryStatusInCache(queryClient, entryId, "read");
+  invalidateUnreadCounts();
+  queryClient.invalidateQueries({
+    queryKey: ["entries", "detail", entryId],
+  });
+  flushMutationQueue().catch(() => {});
 }
 
 /**
@@ -563,27 +594,60 @@ export function useMarkAsRead(
 
     alreadyMarked.current = true;
 
-    (async () => {
-      await db
-        .update(entries)
-        .set({ status: "read" })
-        .where(eq(entries.id, entryId));
-
-      await db.insert(pendingMutations).values({
-        type: "status_change",
-        entry_id: entryId,
-        payload: { status: "read" },
-        created_at: new Date().toISOString(),
-      });
-
-      patchEntryStatusInCache(queryClient, entryId, "read");
-      invalidateUnreadCounts();
-      queryClient.invalidateQueries({
-        queryKey: ["entries", "detail", entryId],
-      });
-      flushMutationQueue().catch(() => {});
-    })();
+    markEntryAsRead(queryClient, entryId);
   }, [entryId, status, queryClient]);
+}
+
+/**
+ * Provides a viewability callback pair for marking entries as read when they
+ * scroll past the top of the viewport.
+ *
+ * When an item becomes not-viewable and its index is below the first currently
+ * visible item, it has left the viewport at the top -- meaning the user
+ * scrolled past it. Only unread entries are marked.
+ *
+ * Returns a stable `viewabilityConfigCallbackPairs` ref suitable for passing
+ * directly to FlatList.
+ */
+export function useMarkAsReadOnScrollHandler(enabled = false) {
+  const queryClient = useQueryClient();
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
+
+  const onViewableItemsChanged = useCallback(
+    ({
+      changed,
+      viewableItems,
+    }: {
+      changed: Array<{
+        isViewable: boolean;
+        index: number | null;
+        item: EntryListItem;
+      }>;
+      viewableItems: Array<{ index: number | null }>;
+    }) => {
+      if (!enabledRef.current) return;
+      if (!viewableItems.length) return;
+      const firstVisibleIndex = viewableItems[0].index ?? 0;
+
+      for (const token of changed) {
+        if (token.isViewable) continue;
+        if (token.index === null || token.index >= firstVisibleIndex) continue;
+        if (token.item.status !== "unread") continue;
+        markEntryAsRead(queryClient, token.item.id);
+      }
+    },
+    [queryClient],
+  );
+
+  const viewabilityConfigCallbackPairs = useRef([
+    {
+      viewabilityConfig: { itemVisiblePercentThreshold: 50 },
+      onViewableItemsChanged,
+    },
+  ]);
+
+  return viewabilityConfigCallbackPairs;
 }
 
 /**

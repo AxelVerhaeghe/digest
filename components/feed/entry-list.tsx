@@ -4,6 +4,7 @@ import type { ListRenderItemInfo } from "react-native";
 import { FeedCard } from "@/components/feed/feed-card";
 import { ThemedView } from "@/components/ui/themed-view";
 import type { EntryListItem } from "@/hooks/use-entries";
+import { useMarkAsReadOnScrollHandler } from "@/hooks/use-entries";
 import { FlatList, StyleSheet } from "react-native";
 import type { InfiniteData } from "@tanstack/react-query";
 
@@ -13,6 +14,7 @@ type Props = {
   fetchNextPage: () => void;
   refreshing?: boolean;
   onRefresh?: () => void;
+  markAsReadOnScroll?: boolean;
 };
 
 function getItemKey(item: EntryListItem) {
@@ -40,6 +42,7 @@ export function EntryList({
   fetchNextPage,
   refreshing,
   onRefresh,
+  markAsReadOnScroll,
 }: Props) {
   const flatData = useMemo(
     () => data?.pages.flatMap((page) => page) ?? [],
@@ -51,6 +54,9 @@ export function EntryList({
       fetchNextPage();
     }
   };
+
+  const viewabilityConfigCallbackPairs =
+    useMarkAsReadOnScrollHandler(markAsReadOnScroll);
 
   return (
     <ThemedView style={styles.container}>
@@ -66,6 +72,7 @@ export function EntryList({
         windowSize={5}
         refreshing={refreshing}
         onRefresh={onRefresh}
+        viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
       />
     </ThemedView>
   );
