@@ -32,7 +32,9 @@ export default function Feed() {
         }}
       />
       <EntryList
-        {...entries}
+        data={entries.data}
+        hasNextPage={entries.hasNextPage}
+        fetchNextPage={entries.fetchNextPage}
         refreshing={isPending}
         onRefresh={mutate}
         markAsReadOnScroll={markAsReadOnScroll}

@@ -26,7 +26,9 @@ export default function HomeScreen() {
         }}
       />
       <EntryList
-        {...entries}
+        data={entries.data}
+        hasNextPage={entries.hasNextPage}
+        fetchNextPage={entries.fetchNextPage}
         refreshing={isPending}
         onRefresh={mutate}
         markAsReadOnScroll={markAsReadOnScroll}

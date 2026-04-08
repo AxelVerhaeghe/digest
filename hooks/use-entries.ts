@@ -157,7 +157,7 @@ const INITIAL_CURSOR: PageCursor = {
   oldestTimestamp: null,
 };
 
-type PageResult = { items: EntryListItem[]; nextCursor: PageCursor };
+export type PageResult = { items: EntryListItem[]; nextCursor: PageCursor };
 
 /**
  * Update a single entry's status in all cached infinite entry list queries.
@@ -216,6 +216,41 @@ async function markEntryAsRead(
   queryClient.invalidateQueries({
     queryKey: ["entries", "detail", entryId],
   });
+  flushMutationQueue().catch(() => {});
+}
+
+/**
+ * Mark multiple entries as read locally in a single batch and queue the
+ * changes for API sync.
+ *
+ * Performs one SQL update, one cache patch pass, and one invalidation
+ * instead of N individual updates -- reducing re-renders during scroll.
+ */
+async function markEntriesAsRead(
+  queryClient: QueryClient,
+  entryIds: number[],
+): Promise<void> {
+  if (entryIds.length === 0) return;
+
+  await db
+    .update(entries)
+    .set({ status: "read" })
+    .where(inArray(entries.id, entryIds));
+
+  const now = new Date().toISOString();
+  await db.insert(pendingMutations).values(
+    entryIds.map((id) => ({
+      type: "status_change",
+      entry_id: id,
+      payload: { status: "read" as const },
+      created_at: now,
+    })),
+  );
+
+  for (const id of entryIds) {
+    patchEntryStatusInCache(queryClient, id, "read");
+  }
+  invalidateUnreadCounts();
   flushMutationQueue().catch(() => {});
 }
 
@@ -351,10 +386,6 @@ export function useEntries(statusFilter: StatusFilter = "all") {
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
     initialPageParam: INITIAL_CURSOR,
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map((p) => p.items),
-    }),
   });
 }
 
@@ -385,10 +416,6 @@ export function useFeedEntries(
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
     initialPageParam: INITIAL_CURSOR,
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map((p) => p.items),
-    }),
   });
 }
 
@@ -421,10 +448,6 @@ export function useCategoryEntries(
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
     initialPageParam: INITIAL_CURSOR,
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map((p) => p.items),
-    }),
   });
 }
 
@@ -445,10 +468,6 @@ export function useUnreadEntries() {
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
     initialPageParam: INITIAL_CURSOR,
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map((p) => p.items),
-    }),
   });
 }
 
@@ -469,10 +488,6 @@ export function useStarredEntries() {
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
     initialPageParam: INITIAL_CURSOR,
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map((p) => p.items),
-    }),
   });
 }
 
@@ -630,12 +645,14 @@ export function useMarkAsReadOnScrollHandler(enabled = false) {
       if (!viewableItems.length) return;
       const firstVisibleIndex = viewableItems[0].index ?? 0;
 
+      const idsToMark: number[] = [];
       for (const token of changed) {
         if (token.isViewable) continue;
         if (token.index === null || token.index >= firstVisibleIndex) continue;
         if (token.item.status !== "unread") continue;
-        markEntryAsRead(queryClient, token.item.id);
+        idsToMark.push(token.item.id);
       }
+      markEntriesAsRead(queryClient, idsToMark);
     },
     [queryClient],
   );

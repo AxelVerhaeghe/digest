@@ -13,7 +13,6 @@ import { db } from "@/db/database";
 import {
   invalidateAll,
   invalidateCategories,
-  invalidateEntries,
   invalidateFeeds,
 } from "@/db/invalidate";
 import {
@@ -420,7 +419,6 @@ export async function fetchOlderEntries(
       await updateOldestSyncedAt(res.entries);
     }
 
-    invalidateEntries();
     return {
       fetched: res.entries.length,
       hasMore: res.entries.length === limit,
@@ -445,7 +443,6 @@ export async function fetchOlderEntries(
     await updateOldestSyncedAt(res.entries);
   }
 
-  invalidateEntries();
   return { fetched: res.entries.length, hasMore: res.entries.length === limit };
 }
 

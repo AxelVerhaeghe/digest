@@ -3,13 +3,13 @@ import type { ListRenderItemInfo } from "react-native";
 
 import { FeedCard } from "@/components/feed/feed-card";
 import { ThemedView } from "@/components/ui/themed-view";
-import type { EntryListItem } from "@/hooks/use-entries";
+import type { EntryListItem, PageResult } from "@/hooks/use-entries";
 import { useMarkAsReadOnScrollHandler } from "@/hooks/use-entries";
 import { FlatList, StyleSheet } from "react-native";
 import type { InfiniteData } from "@tanstack/react-query";
 
 type Props = {
-  data: InfiniteData<EntryListItem[]> | undefined;
+  data: InfiniteData<PageResult> | undefined;
   hasNextPage: boolean;
   fetchNextPage: () => void;
   refreshing?: boolean;
@@ -45,7 +45,7 @@ export function EntryList({
   markAsReadOnScroll,
 }: Props) {
   const flatData = useMemo(
-    () => data?.pages.flatMap((page) => page) ?? [],
+    () => data?.pages.flatMap((page) => page.items) ?? [],
     [data],
   );
 

@@ -26,8 +26,10 @@ export function ArticleHero({ coverImageUrl }: ArticleHeroProps) {
           {!imageLoaded && <Skeleton style={styles.absoluteFill} />}
           <Image
             source={coverImageUrl}
+            recyclingKey={coverImageUrl}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
+            transition={200}
             onLoad={handleLoad}
           />
           <LinearGradient

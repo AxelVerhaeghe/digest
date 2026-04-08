@@ -16,19 +16,22 @@ export function CoverImage({ url, style }: CoverImageProps) {
   const [status, setStatus] = useState<CoverImageStatus>("loading");
 
   const handleLoad = useCallback(() => setStatus("success"), []);
+
   const handleError = useCallback(() => setStatus("error"), []);
 
   if (status === "error") return null;
 
   return (
     <View style={[styles.wrapper, style]}>
-      {status === "loading" && <Skeleton style={styles.skeleton} />}
       <Image
         source={url}
-        style={[styles.image, status === "loading" && styles.hidden]}
+        recyclingKey={url}
+        style={styles.image}
+        transition={200}
         onLoad={handleLoad}
         onError={handleError}
       />
+      {status === "loading" && <Skeleton style={styles.skeleton} />}
     </View>
   );
 }
@@ -48,8 +51,5 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 4,
-  },
-  hidden: {
-    opacity: 0,
   },
 });
