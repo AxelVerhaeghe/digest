@@ -13,6 +13,7 @@ import { db } from "@/db/database";
 import {
   invalidateAll,
   invalidateCategories,
+  invalidateEntries,
   invalidateFeeds,
 } from "@/db/invalidate";
 import {
@@ -28,6 +29,9 @@ import { flushMutationQueue } from "@/sync/mutation-processor";
 
 /** Batch size for paginated API requests. */
 const PAGE_SIZE = 100;
+
+/** Number of entries to fetch during the quick initial sync (Phase 1). */
+const INITIAL_SYNC_LIMIT = 200;
 
 /**
  * Read a value from the sync_meta table.
@@ -241,8 +245,9 @@ async function upsertEntry(entry: Entry): Promise<void> {
 }
 
 /**
- * Full initial sync. Fetches categories, feeds, icons, and all entries
- * from the Miniflux instance (paginated in batches of PAGE_SIZE).
+ * Quick initial sync (Phase 1). Fetches categories, feeds, icons, and
+ * the most recent INITIAL_SYNC_LIMIT entries so the UI can render fast.
+ * Remaining entries are fetched later by `backfillOlderEntries()`.
  */
 export async function initialSync(signal?: AbortSignal): Promise<void> {
   await syncCategories(signal);
@@ -250,14 +255,16 @@ export async function initialSync(signal?: AbortSignal): Promise<void> {
 
   let offset = 0;
   let oldestPublishedAt: string | null = null;
+  let fetched = 0;
   let hasMore = true;
 
-  while (hasMore) {
+  while (hasMore && fetched < INITIAL_SYNC_LIMIT) {
+    const batchSize = Math.min(PAGE_SIZE, INITIAL_SYNC_LIMIT - fetched);
     const res = await api.getEntries(
       {
         order: "published_at",
         direction: "desc",
-        limit: PAGE_SIZE,
+        limit: batchSize,
         offset,
         status: ["unread", "read"],
       },
@@ -274,8 +281,9 @@ export async function initialSync(signal?: AbortSignal): Promise<void> {
       }
     }
 
+    fetched += res.entries.length;
     offset += res.entries.length;
-    hasMore = res.entries.length === PAGE_SIZE;
+    hasMore = res.entries.length === batchSize;
   }
 
   await setMeta("last_sync_at", new Date().toISOString());
@@ -334,6 +342,90 @@ export async function incrementalSync(signal?: AbortSignal): Promise<void> {
 export async function needsInitialSync(): Promise<boolean> {
   const lastSync = await getMeta("last_sync_at");
   return lastSync === null;
+}
+
+/**
+ * Check whether the backfill of older entries is still pending.
+ * Returns true when the initial sync has completed but the full
+ * history has not yet been fetched.
+ */
+export async function needsBackfill(): Promise<boolean> {
+  const lastSync = await getMeta("last_sync_at");
+  if (lastSync === null) return false;
+
+  const backfillDone = await getMeta("backfill_complete");
+  return backfillDone !== "true";
+}
+
+/**
+ * Progress info reported by `backfillOlderEntries` after each batch.
+ */
+export type BackfillProgress = {
+  fetched: number;
+  total: number | null;
+};
+
+/**
+ * Backfill older entries (Phase 2). Resumes from `oldest_synced_at`
+ * and pages through the full entry history in the background.
+ *
+ * Calls `onProgress` after every batch so the UI can show progress.
+ * Writes `backfill_complete` to sync_meta when done.
+ */
+export async function backfillOlderEntries(
+  signal?: AbortSignal,
+  onProgress?: (progress: BackfillProgress) => void,
+): Promise<void> {
+  const oldest = await getMeta("oldest_synced_at");
+  if (oldest === null) {
+    await setMeta("backfill_complete", "true");
+    return;
+  }
+
+  let cursor = oldest;
+  let totalFetched = 0;
+  let totalEntries: number | null = null;
+  let hasMore = true;
+
+  while (hasMore) {
+    if (signal?.aborted) return;
+
+    const publishedBefore = Math.floor(new Date(cursor).getTime() / 1000);
+
+    const res = await api.getEntries(
+      {
+        order: "published_at",
+        direction: "desc",
+        limit: PAGE_SIZE,
+        published_before: publishedBefore,
+        status: ["unread", "read"],
+      },
+      signal,
+    );
+
+    if (totalEntries === null) {
+      totalEntries = res.total + totalFetched;
+    }
+
+    for (const entry of res.entries) {
+      await upsertEntry(entry);
+      if (entry.published_at < cursor) {
+        cursor = entry.published_at;
+      }
+    }
+
+    totalFetched += res.entries.length;
+    hasMore = res.entries.length === PAGE_SIZE;
+
+    if (res.entries.length > 0) {
+      await setMeta("oldest_synced_at", cursor);
+      invalidateEntries();
+      onProgress?.({ fetched: totalFetched, total: totalEntries });
+    }
+  }
+
+  await setMeta("backfill_complete", "true");
+  onProgress?.({ fetched: totalFetched, total: totalEntries });
 }
 
 /**

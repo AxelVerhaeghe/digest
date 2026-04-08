@@ -25,6 +25,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { getCredentials } from "@/lib/credentials";
 import { initializeApi } from "@/api";
 import { LoginScreen } from "@/components/login/login-screen";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const LightTheme = {
   ...DefaultTheme,
@@ -54,28 +55,62 @@ type AuthStatus = "checking" | "needs-login" | "authenticated";
  * Full-screen overlay that runs sync after authentication.
  * Shows a loading indicator during initial sync; becomes
  * invisible once sync completes (children show through).
+ * Displays a subtle top banner during background backfill.
  */
 function SyncOverlay() {
   const sync = useSync();
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     registerBackgroundSync().catch(() => {});
   }, []);
 
-  if (!sync.isInitialSync) {
-    return null;
+  if (sync.isInitialSync) {
+    return (
+      <View
+        style={[StyleSheet.absoluteFill, { backgroundColor: theme.surface }]}
+      >
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+          <ThemedText style={{ marginTop: 16 }}>
+            Syncing your feeds...
+          </ThemedText>
+        </View>
+      </View>
+    );
   }
 
-  return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.surface }]}>
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-        <ThemedText style={{ marginTop: 16 }}>Syncing your feeds...</ThemedText>
+  if (sync.isBackfilling && sync.backfillProgress) {
+    const { fetched, total } = sync.backfillProgress;
+    const progressText =
+      total != null
+        ? `Loading older articles... ${fetched.toLocaleString()} / ${total.toLocaleString()}`
+        : `Loading older articles... ${fetched.toLocaleString()}`;
+
+    return (
+      <View
+        style={[
+          styles.backfillBanner,
+          {
+            top: insets.top,
+            backgroundColor: theme.surfaceContainerHigh,
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <ActivityIndicator size="small" />
+        <ThemedText
+          style={[styles.backfillText, { color: theme.onSurfaceVariant }]}
+        >
+          {progressText}
+        </ThemedText>
       </View>
-    </View>
-  );
+    );
+  }
+
+  return null;
 }
 
 function AppContent() {
@@ -197,5 +232,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  backfillBanner: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+  },
+  backfillText: {
+    fontSize: 13,
   },
 });
