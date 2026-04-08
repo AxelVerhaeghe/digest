@@ -1,11 +1,11 @@
-import { useCallback, useState } from "react";
 import type { ViewStyle } from "react-native";
 import { StyleSheet, View } from "react-native";
 
-import { Skeleton } from "@/components/ui/skeleton";
 import { Image } from "expo-image";
 
-type CoverImageStatus = "loading" | "success" | "error";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { DefaultImageBlurhash } from "@/constants/image";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 type CoverImageProps = {
   url: string;
@@ -13,25 +13,23 @@ type CoverImageProps = {
 };
 
 export function CoverImage({ url, style }: CoverImageProps) {
-  const [status, setStatus] = useState<CoverImageStatus>("loading");
-
-  const handleLoad = useCallback(() => setStatus("success"), []);
-
-  const handleError = useCallback(() => setStatus("error"), []);
-
-  if (status === "error") return null;
+  const fallbackBg = useThemeColor({}, "surfaceContainerHigh");
+  const fallbackFg = useThemeColor({}, "outlineVariant");
 
   return (
-    <View style={[styles.wrapper, style]}>
+    <View style={[styles.wrapper, { backgroundColor: fallbackBg }, style]}>
+      <View style={styles.fallback}>
+        <IconSymbol name="photo" size={20} color={fallbackFg} />
+      </View>
       <Image
         source={url}
         recyclingKey={url}
         style={styles.image}
+        contentFit="cover"
         transition={200}
-        onLoad={handleLoad}
-        onError={handleError}
+        placeholder={DefaultImageBlurhash}
+        placeholderContentFit="cover"
       />
-      {status === "loading" && <Skeleton style={styles.skeleton} />}
     </View>
   );
 }
@@ -43,9 +41,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: "hidden",
   },
-  skeleton: {
+  fallback: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
   },
   image: {
     width: "100%",

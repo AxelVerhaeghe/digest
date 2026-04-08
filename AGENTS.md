@@ -86,6 +86,11 @@ Entries support query params: `status`, `direction`, `order`, `limit`, `offset`,
 
 ## Build & Run Commands
 
+### Documentation Lookup
+
+- When looking up library/framework documentation, use the Context 7 tool first.
+- Prefer Context 7 over generic web search so examples and API references stay current.
+
 ```bash
 # Start the Expo dev server
 npm start

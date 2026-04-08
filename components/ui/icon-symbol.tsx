@@ -34,6 +34,7 @@ const MAPPING = {
   "slider.horizontal.3": "tune",
   "square.and.arrow.up": "share",
   newspaper: "article",
+  photo: "photo",
 } satisfies Partial<IconMapping>;
 
 /**
