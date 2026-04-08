@@ -310,6 +310,14 @@ Within each group, imports are sorted alphabetically. The VS Code settings enfor
 - For theme-aware components, use `useThemeColor()` or `useColorScheme()` hooks. Do not
   hardcode colors -- use `Colors` from `@/constants/theme`.
 
+### Memoization
+
+- **React Compiler is enabled.** It auto-memoizes components and values, so do not use
+  `useMemo`, `useCallback`, or `React.memo` for performance. The compiler handles it.
+- Only use `useMemo` when a stable reference is required as a dependency for another
+  hook's dependency array (e.g., constructing an object passed to a `useEffect` dep list).
+  This is rare -- prefer plain variables and let the compiler optimize.
+
 ### Platform-Specific Code
 
 - Use `process.env.EXPO_OS` for platform checks in component logic.

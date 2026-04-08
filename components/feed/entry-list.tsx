@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useMemo, useRef } from "react";
 import type { ListRenderItemInfo } from "react-native";
 
@@ -17,6 +18,7 @@ type Props = {
   refreshing?: boolean;
   onRefresh?: () => void;
   markAsReadOnScroll?: boolean;
+  emptyState?: ReactElement;
 };
 
 function getItemKey(item: EntryListItem) {
@@ -45,6 +47,7 @@ export function EntryList({
   refreshing,
   onRefresh,
   markAsReadOnScroll,
+  emptyState,
 }: Props) {
   const listRef = useRef<FlatList>(null);
   useScrollToTop(listRef);
@@ -63,6 +66,8 @@ export function EntryList({
   const viewabilityConfigCallbackPairs =
     useMarkAsReadOnScrollHandler(markAsReadOnScroll);
 
+  const listEmptyComponent = data !== undefined ? emptyState : undefined;
+
   return (
     <ThemedView style={styles.container}>
       <FlatList
@@ -72,13 +77,17 @@ export function EntryList({
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          flatData.length === 0 && styles.listContentEmpty,
+        ]}
         initialNumToRender={4}
         maxToRenderPerBatch={3}
         windowSize={5}
         refreshing={refreshing}
         onRefresh={onRefresh}
         viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
+        ListEmptyComponent={listEmptyComponent}
       />
     </ThemedView>
   );
@@ -91,5 +100,9 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     gap: 64,
+  },
+  listContentEmpty: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
 });

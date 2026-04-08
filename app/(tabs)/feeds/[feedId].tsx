@@ -2,6 +2,7 @@ import { Stack, router, useLocalSearchParams } from "expo-router";
 
 import { EntryList } from "@/components/feed/entry-list";
 import { HeaderActions } from "@/components/feed/feed-top-bar";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useFeedEntries, useMarkAllFeedEntriesRead } from "@/hooks/use-entries";
 import { useFeed } from "@/hooks/use-feeds";
 import { useRefreshEntries } from "@/hooks/use-refresh-entries";
@@ -23,6 +24,21 @@ export default function Feed() {
   const { isPending, mutate } = useRefreshEntries(id);
   const markAllRead = useMarkAllFeedEntriesRead(id);
 
+  const emptyState =
+    statusFilter === "unread" ? (
+      <EmptyState
+        icon="checkmark.circle"
+        title="All caught up"
+        description="You've read everything in this feed."
+      />
+    ) : (
+      <EmptyState
+        icon="newspaper"
+        title="No articles"
+        description="This feed doesn't have any articles yet."
+      />
+    );
+
   return (
     <>
       <Stack.Screen
@@ -43,6 +59,7 @@ export default function Feed() {
         refreshing={isPending}
         onRefresh={mutate}
         markAsReadOnScroll={markAsReadOnScroll}
+        emptyState={emptyState}
       />
     </>
   );

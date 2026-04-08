@@ -1,5 +1,6 @@
 import { Tabs, router } from "expo-router";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import { EntryList } from "@/components/feed/entry-list";
 import { HeaderActions } from "@/components/feed/feed-top-bar";
 import { useEntries, useMarkAllEntriesRead } from "@/hooks/use-entries";
@@ -17,6 +18,21 @@ export default function HomeScreen() {
   const entries = useEntries(statusFilter, sortOrder);
   const { isPending, mutate } = useRefreshEntries();
   const markAllRead = useMarkAllEntriesRead();
+
+  const emptyState =
+    statusFilter === "unread" ? (
+      <EmptyState
+        icon="checkmark.circle"
+        title="All caught up"
+        description="You've read everything. Nice work."
+      />
+    ) : (
+      <EmptyState
+        icon="newspaper"
+        title="No articles yet"
+        description="Your subscribed feeds will appear here once they sync."
+      />
+    );
 
   return (
     <>
@@ -37,6 +53,7 @@ export default function HomeScreen() {
         refreshing={isPending}
         onRefresh={mutate}
         markAsReadOnScroll={markAsReadOnScroll}
+        emptyState={emptyState}
       />
     </>
   );

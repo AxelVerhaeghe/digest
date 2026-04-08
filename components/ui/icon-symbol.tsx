@@ -9,7 +9,7 @@ type IconMapping = Record<
   Extract<SymbolViewProps["name"], string>,
   ComponentProps<typeof MaterialIcons>["name"]
 >;
-type IconSymbolName = keyof typeof MAPPING;
+export type IconSymbolName = keyof typeof MAPPING;
 
 /**
  * Add your SF Symbols to Material Icons mappings here.
@@ -33,6 +33,7 @@ const MAPPING = {
   "bookmark.fill": "bookmark",
   "slider.horizontal.3": "tune",
   "square.and.arrow.up": "share",
+  tray: "inbox",
   newspaper: "article",
   photo: "photo",
 } satisfies Partial<IconMapping>;
