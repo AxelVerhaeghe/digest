@@ -35,9 +35,7 @@ export function AllArticlesLink({ unreadCount }: Props) {
           />
           <ThemedView style={[styles.textContent, { backgroundColor }]}>
             <ThemedText>All Articles</ThemedText>
-            {unreadCount > 0 && (
-              <Badge>{`${formatUnreadCount(unreadCount)} unread entries`}</Badge>
-            )}
+            <Badge>{`${formatUnreadCount(unreadCount)} unread entries`}</Badge>
           </ThemedView>
           <IconSymbol
             size={20}
