@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
-    gap: 8,
+    gap: 16,
   },
   metadata: {
     flexDirection: "row",
