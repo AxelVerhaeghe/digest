@@ -26,9 +26,6 @@ import {
 import { getCoverImage } from "@/lib/cover-image";
 import { flushMutationQueue } from "@/sync/mutation-processor";
 
-/** Maximum entries to fetch during initial sync. */
-const INITIAL_SYNC_LIMIT = 1000;
-
 /** Batch size for paginated API requests. */
 const PAGE_SIZE = 100;
 
@@ -244,24 +241,23 @@ async function upsertEntry(entry: Entry): Promise<void> {
 }
 
 /**
- * Full initial sync. Fetches categories, feeds, icons, and the most
- * recent entries (up to INITIAL_SYNC_LIMIT).
+ * Full initial sync. Fetches categories, feeds, icons, and all entries
+ * from the Miniflux instance (paginated in batches of PAGE_SIZE).
  */
 export async function initialSync(signal?: AbortSignal): Promise<void> {
   await syncCategories(signal);
   await syncFeeds(signal);
 
-  let totalFetched = 0;
   let offset = 0;
   let oldestPublishedAt: string | null = null;
+  let hasMore = true;
 
-  while (totalFetched < INITIAL_SYNC_LIMIT) {
-    const batchSize = Math.min(PAGE_SIZE, INITIAL_SYNC_LIMIT - totalFetched);
+  while (hasMore) {
     const res = await api.getEntries(
       {
         order: "published_at",
         direction: "desc",
-        limit: batchSize,
+        limit: PAGE_SIZE,
         offset,
         status: ["unread", "read"],
       },
@@ -278,12 +274,8 @@ export async function initialSync(signal?: AbortSignal): Promise<void> {
       }
     }
 
-    totalFetched += res.entries.length;
     offset += res.entries.length;
-
-    if (res.entries.length < batchSize) {
-      break;
-    }
+    hasMore = res.entries.length === PAGE_SIZE;
   }
 
   await setMeta("last_sync_at", new Date().toISOString());

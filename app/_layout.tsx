@@ -7,7 +7,7 @@ import { useFonts } from "@expo-google-fonts/newsreader";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -19,9 +19,12 @@ import { db } from "@/db/database";
 import migrations from "@/drizzle/migrations";
 import { useSync } from "@/hooks/use-sync";
 import { registerBackgroundSync } from "@/sync/background-task";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { ThemedText } from "@/components/ui/themed-text";
 import { IconButton } from "@/components/ui/icon-button";
+import { getCredentials } from "@/lib/credentials";
+import { initializeApi } from "@/api";
+import { LoginScreen } from "@/components/login/login-screen";
 
 const LightTheme = {
   ...DefaultTheme,
@@ -45,20 +48,59 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-function AppContent() {
+type AuthStatus = "checking" | "needs-login" | "authenticated";
+
+/**
+ * Full-screen overlay that runs sync after authentication.
+ * Shows a loading indicator during initial sync; becomes
+ * invisible once sync completes (children show through).
+ */
+function SyncOverlay() {
   const sync = useSync();
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
 
   useEffect(() => {
     registerBackgroundSync().catch(() => {});
   }, []);
 
-  if (sync.isInitialSync) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+  if (!sync.isInitialSync) {
+    return null;
+  }
+
+  return (
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.surface }]}>
+      <View style={styles.centered}>
         <ActivityIndicator size="large" />
         <ThemedText style={{ marginTop: 16 }}>Syncing your feeds...</ThemedText>
       </View>
-    );
+    </View>
+  );
+}
+
+function AppContent() {
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
+  const colorScheme = useColorScheme() ?? "light";
+  const theme = Colors[colorScheme];
+
+  useEffect(() => {
+    async function checkCredentials() {
+      const credentials = await getCredentials();
+
+      if (credentials) {
+        initializeApi(credentials);
+        setAuthStatus("authenticated");
+      } else {
+        setAuthStatus("needs-login");
+      }
+    }
+
+    checkCredentials();
+  }, []);
+
+  function handleLogin(baseUrl: string, token: string) {
+    initializeApi({ baseUrl, token });
+    setAuthStatus("authenticated");
   }
 
   return (
@@ -94,6 +136,18 @@ function AppContent() {
         />
       </Stack>
       <StatusBar style="auto" />
+
+      {authStatus === "authenticated" && <SyncOverlay />}
+
+      {authStatus !== "authenticated" && (
+        <View
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.surface }]}
+        >
+          {authStatus === "needs-login" && (
+            <LoginScreen onLogin={handleLogin} />
+          )}
+        </View>
+      )}
     </>
   );
 }
@@ -121,7 +175,7 @@ export default function RootLayout() {
 
   if (migrationError) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={styles.centered}>
         <ThemedText>Migration error: {migrationError.message}</ThemedText>
       </View>
     );
@@ -137,3 +191,11 @@ export default function RootLayout() {
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
