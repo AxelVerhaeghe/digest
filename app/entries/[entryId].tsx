@@ -19,7 +19,7 @@ import { useLocalSearchParams } from "expo-router";
 import { Share, StyleSheet } from "react-native";
 import { WebView } from "react-native-webview";
 
-const INJECTED_JS = `
+const postHeight = `
   (function() {
     function postHeight() {
       var height = document.documentElement.scrollHeight;
@@ -45,20 +45,14 @@ export default function Article() {
   const hasCoverImage = data?.cover_image_url != null;
   const content = data?.content;
 
-  const html = useMemo(
-    () =>
-      content != null
-        ? buildArticleHtml(content, colorScheme, hasCoverImage)
-        : "",
-    [content, colorScheme, hasCoverImage],
-  );
+  const html = content != null ? buildArticleHtml(content, colorScheme) : "";
 
-  const onMessage = useCallback((event: WebViewMessageEvent) => {
+  const onMessage = (event: WebViewMessageEvent) => {
     const message = JSON.parse(event.nativeEvent.data);
     if (message.type === "height") {
       setWebViewHeight(message.value);
     }
-  }, []);
+  };
 
   if (!data) return null;
 
@@ -100,7 +94,7 @@ export default function Article() {
           style={[styles.webview, { height: webViewHeight }]}
           originWhitelist={["*"]}
           scrollEnabled={false}
-          injectedJavaScript={INJECTED_JS}
+          injectedJavaScript={postHeight}
           onMessage={onMessage}
         />
       </ThemedView>

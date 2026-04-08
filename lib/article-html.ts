@@ -1,20 +1,9 @@
 import { Colors } from "@/constants/theme";
 import { sanitizeArticleHtml } from "@/lib/sanitize";
 
-/**
- * Builds a complete HTML document that renders article content with
- * theme-aware styling. Loads Newsreader (body) and Manrope (headings)
- * from Google Fonts CDN, falling back to system serif/sans-serif when
- * offline.
- *
- * The raw HTML content is sanitized before rendering using an allowlist
- * that mirrors the Miniflux server-side sanitizer, providing
- * defense-in-depth against tampered API responses or sanitizer bypasses.
- */
 export function buildArticleHtml(
   content: string | undefined,
   colorScheme: "light" | "dark",
-  hasCoverImage?: boolean,
 ): string {
   if (!content) return "";
 
@@ -194,26 +183,6 @@ export function buildArticleHtml(
           parent.remove();
         }
       }
-${
-  hasCoverImage
-    ? `
-      var paragraphCount = 0;
-      var nodes = Array.from(document.body.children);
-      for (var i = 0; i < nodes.length; i++) {
-        var node = nodes[i];
-        var tag = node.tagName;
-        if (tag === 'P' && node.textContent.trim().length > 0) {
-          paragraphCount++;
-          if (paragraphCount >= 3) break;
-        }
-        if (tag === 'IMG' || (tag === 'FIGURE' && node.querySelector('img'))) {
-          node.remove();
-          break;
-        }
-      }
-`
-    : ""
-}
     });
   </script>
 </head>
