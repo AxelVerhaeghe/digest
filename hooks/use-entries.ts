@@ -7,7 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
-import { and, desc, eq, inArray, lt, SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, SQL } from "drizzle-orm";
 
 import { db } from "@/db/database";
 import {
@@ -23,6 +23,7 @@ import type { FetchOlderFilters } from "@/sync/sync-engine";
 import { flushMutationQueue } from "@/sync/mutation-processor";
 import type { EntryStatus } from "@/api/types";
 import type { StatusFilter } from "@/hooks/use-settings";
+import type { SortOrder } from "@/hooks/use-settings";
 
 /** Number of entries loaded per page in infinite-scroll lists. */
 const PAGE_SIZE = 20;
@@ -263,12 +264,17 @@ async function hybridQueryFn(
   cursor: PageCursor,
   whereClause: SQL | undefined,
   filters: FetchOlderFilters,
+  sortOrder: SortOrder = "newest",
 ): Promise<{ items: EntryListItem[]; nextCursor: PageCursor }> {
   const conditions = whereClause ? [whereClause] : [];
+  const orderByColumn =
+    sortOrder === "oldest"
+      ? asc(entries.published_at)
+      : desc(entries.published_at);
 
   const localRows = await baseEntryListQuery()
     .where(and(...conditions))
-    .orderBy(desc(entries.published_at))
+    .orderBy(orderByColumn)
     .limit(PAGE_SIZE)
     .offset(cursor.offset);
 
@@ -325,7 +331,7 @@ async function hybridQueryFn(
     // Re-query local to include newly fetched entries
     const refreshedRows = await baseEntryListQuery()
       .where(and(...conditions))
-      .orderBy(desc(entries.published_at))
+      .orderBy(orderByColumn)
       .limit(PAGE_SIZE)
       .offset(cursor.offset);
 
@@ -360,26 +366,30 @@ async function hybridQueryFn(
 }
 
 /**
- * All entries from the local store, ordered newest-first.
+ * All entries from the local store, ordered by the user's sort preference.
  * Transparently fetches older entries from the API when local data runs out.
  *
  * When `statusFilter` is `"unread"`, only unread entries are included in the
  * initial query. Already-loaded entries are NOT removed from the list when
  * their status changes (freeze behavior).
  */
-export function useEntries(statusFilter: StatusFilter = "all") {
+export function useEntries(
+  statusFilter: StatusFilter = "all",
+  sortOrder: SortOrder = "newest",
+) {
   const whereClause =
     statusFilter === "unread" ? eq(entries.status, "unread") : undefined;
   const filters: FetchOlderFilters =
     statusFilter === "unread" ? { status: "unread" } : {};
 
   return useInfiniteQuery({
-    queryKey: ["entries", "all", { statusFilter }],
+    queryKey: ["entries", "all", { statusFilter, sortOrder }],
     queryFn: async ({ pageParam }) => {
       const { items, nextCursor } = await hybridQueryFn(
         pageParam,
         whereClause,
         filters,
+        sortOrder,
       );
       return { items, nextCursor };
     },
@@ -390,11 +400,12 @@ export function useEntries(statusFilter: StatusFilter = "all") {
 }
 
 /**
- * Entries belonging to a single feed, ordered newest-first.
+ * Entries belonging to a single feed, ordered by the user's sort preference.
  */
 export function useFeedEntries(
   feedId: number,
   statusFilter: StatusFilter = "all",
+  sortOrder: SortOrder = "newest",
 ) {
   const conditions: SQL[] = [eq(entries.feed_id, feedId)];
   if (statusFilter === "unread") conditions.push(eq(entries.status, "unread"));
@@ -404,12 +415,13 @@ export function useFeedEntries(
     statusFilter === "unread" ? { feedId, status: "unread" } : { feedId };
 
   return useInfiniteQuery({
-    queryKey: ["entries", "feed", feedId, { statusFilter }],
+    queryKey: ["entries", "feed", feedId, { statusFilter, sortOrder }],
     queryFn: async ({ pageParam }) => {
       const { items, nextCursor } = await hybridQueryFn(
         pageParam,
         whereClause,
         filters,
+        sortOrder,
       );
       return { items, nextCursor };
     },
@@ -420,11 +432,13 @@ export function useFeedEntries(
 }
 
 /**
- * Entries whose feed belongs to the given category, ordered newest-first.
+ * Entries whose feed belongs to the given category, ordered by the user's
+ * sort preference.
  */
 export function useCategoryEntries(
   categoryId: number,
   statusFilter: StatusFilter = "all",
+  sortOrder: SortOrder = "newest",
 ) {
   const conditions: SQL[] = [eq(feeds.category_id, categoryId)];
   if (statusFilter === "unread") conditions.push(eq(entries.status, "unread"));
@@ -436,12 +450,13 @@ export function useCategoryEntries(
       : { categoryId };
 
   return useInfiniteQuery({
-    queryKey: ["entries", "category", categoryId, { statusFilter }],
+    queryKey: ["entries", "category", categoryId, { statusFilter, sortOrder }],
     queryFn: async ({ pageParam }) => {
       const { items, nextCursor } = await hybridQueryFn(
         pageParam,
         whereClause,
         filters,
+        sortOrder,
       );
       return { items, nextCursor };
     },
@@ -452,16 +467,17 @@ export function useCategoryEntries(
 }
 
 /**
- * All unread entries, ordered newest-first.
+ * All unread entries, ordered by the user's sort preference.
  */
-export function useUnreadEntries() {
+export function useUnreadEntries(sortOrder: SortOrder = "newest") {
   return useInfiniteQuery({
-    queryKey: ["entries", "unread"],
+    queryKey: ["entries", "unread", { sortOrder }],
     queryFn: async ({ pageParam }) => {
       const { items, nextCursor } = await hybridQueryFn(
         pageParam,
         eq(entries.status, "unread"),
         { status: "unread" },
+        sortOrder,
       );
       return { items, nextCursor };
     },
@@ -472,16 +488,17 @@ export function useUnreadEntries() {
 }
 
 /**
- * All bookmarked / starred entries, ordered newest-first.
+ * All bookmarked / starred entries, ordered by the user's sort preference.
  */
-export function useStarredEntries() {
+export function useStarredEntries(sortOrder: SortOrder = "newest") {
   return useInfiniteQuery({
-    queryKey: ["entries", "starred"],
+    queryKey: ["entries", "starred", { sortOrder }],
     queryFn: async ({ pageParam }) => {
       const { items, nextCursor } = await hybridQueryFn(
         pageParam,
         eq(entries.starred, true),
         { starred: true },
+        sortOrder,
       );
       return { items, nextCursor };
     },

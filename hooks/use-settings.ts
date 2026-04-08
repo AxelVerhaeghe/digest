@@ -6,15 +6,18 @@ import { userSettings } from "@/db/schema";
 import { invalidateEntries, invalidateSettings } from "@/db/invalidate";
 
 export type StatusFilter = "all" | "unread";
+export type SortOrder = "newest" | "oldest";
 
 const SETTINGS_KEYS = {
   statusFilter: "status_filter",
   markAsReadOnScroll: "mark_as_read_on_scroll",
+  sortOrder: "sort_order",
 } as const;
 
 const DEFAULTS = {
   statusFilter: "all" as StatusFilter,
   markAsReadOnScroll: false,
+  sortOrder: "newest" as SortOrder,
 } as const;
 
 async function getSetting(key: string): Promise<string | null> {
@@ -74,6 +77,29 @@ export function useUpdateMarkAsReadOnScroll() {
     },
     onSuccess: () => {
       invalidateSettings();
+    },
+  });
+}
+
+export function useSortOrder() {
+  return useQuery({
+    queryKey: ["settings", SETTINGS_KEYS.sortOrder],
+    queryFn: async (): Promise<SortOrder> => {
+      const value = await getSetting(SETTINGS_KEYS.sortOrder);
+      if (value === "oldest") return "oldest";
+      return DEFAULTS.sortOrder;
+    },
+  });
+}
+
+export function useUpdateSortOrder() {
+  return useMutation({
+    mutationFn: async (value: SortOrder) => {
+      await upsertSetting(SETTINGS_KEYS.sortOrder, value);
+    },
+    onSuccess: () => {
+      invalidateSettings();
+      invalidateEntries();
     },
   });
 }

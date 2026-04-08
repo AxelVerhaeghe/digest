@@ -4,12 +4,17 @@ import { EntryList } from "@/components/feed/entry-list";
 import { HeaderActions } from "@/components/feed/feed-top-bar";
 import { useEntries, useMarkAllEntriesRead } from "@/hooks/use-entries";
 import { useRefreshEntries } from "@/hooks/use-refresh-entries";
-import { useMarkAsReadOnScroll, useStatusFilter } from "@/hooks/use-settings";
+import {
+  useMarkAsReadOnScroll,
+  useSortOrder,
+  useStatusFilter,
+} from "@/hooks/use-settings";
 
 export default function HomeScreen() {
   const { data: statusFilter = "all" } = useStatusFilter();
+  const { data: sortOrder = "newest" } = useSortOrder();
   const { data: markAsReadOnScroll = false } = useMarkAsReadOnScroll();
-  const entries = useEntries(statusFilter);
+  const entries = useEntries(statusFilter, sortOrder);
   const { isPending, mutate } = useRefreshEntries();
   const markAllRead = useMarkAllEntriesRead();
 
