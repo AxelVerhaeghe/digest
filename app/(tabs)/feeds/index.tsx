@@ -1,5 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { ScrollView, StyleSheet } from "react-native";
+
+import { useScrollToTop } from "@react-navigation/native";
 
 import { Link } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -38,10 +40,16 @@ export default function FeedsScreen() {
     return map;
   }, [feeds]);
 
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.allArticlesLink}>
             <AllArticlesLink unreadCount={totalUnread} />
           </ThemedView>

@@ -1,5 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { ListRenderItemInfo } from "react-native";
+
+import { useScrollToTop } from "@react-navigation/native";
 
 import { FeedCard } from "@/components/feed/feed-card";
 import { ThemedView } from "@/components/ui/themed-view";
@@ -44,6 +46,9 @@ export function EntryList({
   onRefresh,
   markAsReadOnScroll,
 }: Props) {
+  const listRef = useRef<FlatList>(null);
+  useScrollToTop(listRef);
+
   const flatData = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
     [data],
@@ -61,6 +66,7 @@ export function EntryList({
   return (
     <ThemedView style={styles.container}>
       <FlatList
+        ref={listRef}
         data={flatData}
         keyExtractor={getItemKey}
         onEndReached={handleEndReached}
