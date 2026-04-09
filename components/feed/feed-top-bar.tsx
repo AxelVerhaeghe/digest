@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { IconButton } from "@/components/ui/icon-button";
 
 type HeaderActionsProps = {
-  onMarkAllRead: () => void;
+  onMarkAllRead?: () => void;
   onFilterPress: () => void;
 };
 
@@ -13,11 +13,13 @@ export function HeaderActions({
 }: HeaderActionsProps) {
   return (
     <View style={styles.actions}>
-      <IconButton
-        icon="checkmark.message"
-        variant="ghost"
-        onPress={onMarkAllRead}
-      />
+      {!!onMarkAllRead && (
+        <IconButton
+          icon="checkmark.message"
+          variant="ghost"
+          onPress={onMarkAllRead}
+        />
+      )}
       <IconButton
         icon="slider.horizontal.3"
         variant="ghost"
