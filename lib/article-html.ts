@@ -174,6 +174,26 @@ export function buildArticleHtml(
     }
   </style>
   <script>
+    function postHeight() {
+      var height = document.documentElement.scrollHeight;
+      window.ReactNativeWebView?.postMessage?.(
+        JSON.stringify({ type: 'height', value: height })
+      );
+    }
+
+    document.addEventListener('DOMContentLoaded', postHeight);
+
+    function observeBody() {
+      if (!document.body) {
+        requestAnimationFrame(observeBody);
+        return;
+      }
+      new ResizeObserver(postHeight).observe(document.body);
+    }
+
+    observeBody();
+  </script>
+  <script>
     document.addEventListener('DOMContentLoaded', function() {
       var h = document.querySelector('h1, h2');
       if (h) {

@@ -19,18 +19,6 @@ import { useLocalSearchParams } from "expo-router";
 import { Share, StyleSheet } from "react-native";
 import { WebView } from "react-native-webview";
 
-const postHeight = `
-  (function() {
-    function postHeight() {
-      var height = document.documentElement.scrollHeight;
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'height', value: height }));
-    }
-    postHeight();
-    new ResizeObserver(postHeight).observe(document.body);
-  })();
-  true;
-`;
-
 export default function Article() {
   const params = useLocalSearchParams<{ entryId: string }>();
   const entryId = parseInt(params.entryId);
@@ -94,7 +82,6 @@ export default function Article() {
           style={[styles.webview, { height: webViewHeight }]}
           originWhitelist={["*"]}
           scrollEnabled={false}
-          injectedJavaScript={postHeight}
           onMessage={onMessage}
         />
       </ThemedView>
