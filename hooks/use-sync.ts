@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 
 import {
   type BackfillProgress,
@@ -18,21 +19,19 @@ type SyncState =
   | { status: "error"; error: Error }
   | { status: "ready" };
 
-/**
- * Manages the app's sync lifecycle:
- * - Runs initial sync on first launch (quick — fetches ~200 entries)
- * - Runs incremental sync on subsequent launches
- * - Kicks off background backfill when the full history hasn't been fetched
- * - Flushes the mutation queue when connectivity is restored
- * - Exposes sync and backfill status for loading indicators
- */
-export function useSync() {
-  const [state, setState] = useState<SyncState>({ status: "idle" });
+const FOREGROUND_SYNC_THROTTLE_MS = 5 * 60 * 1000;
+
+type BackfillState = {
+  isBackfilling: boolean;
+  backfillProgress: BackfillProgress | null;
+  startBackfillIfNeeded: () => Promise<void>;
+  abortBackfill: () => void;
+};
+
+function useBackfillState(): BackfillState {
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [backfillProgress, setBackfillProgress] =
     useState<BackfillProgress | null>(null);
-  const isOnline = useIsOnline();
-  const prevOnline = useRef<boolean | null>(null);
   const backfillController = useRef<AbortController | null>(null);
 
   const startBackfillIfNeeded = useCallback(async () => {
@@ -59,22 +58,116 @@ export function useSync() {
     }
   }, []);
 
-  const runSync = useCallback(async () => {
-    try {
-      const isFirstSync = await needsInitialSync();
+  const abortBackfill = useCallback(() => {
+    backfillController.current?.abort();
+  }, []);
 
+  return {
+    isBackfilling,
+    backfillProgress,
+    startBackfillIfNeeded,
+    abortBackfill,
+  };
+}
+
+type AutoIncrementalSyncOptions = {
+  isOnline: boolean | null;
+  isReady: boolean;
+  runIncrementalSync: () => Promise<void>;
+};
+
+function useAutoIncrementalSync({
+  isOnline,
+  isReady,
+  runIncrementalSync,
+}: AutoIncrementalSyncOptions): void {
+  const prevOnline = useRef<boolean | null>(null);
+  const lastForegroundSyncAt = useRef(0);
+
+  useEffect(() => {
+    if (prevOnline.current === false && isOnline === true) {
+      flushMutationQueue().catch(() => {});
+
+      if (isReady) {
+        runIncrementalSync().catch(() => {
+          // Best effort; next connectivity/foreground event will retry.
+        });
+      }
+    }
+
+    prevOnline.current = isOnline;
+  }, [isOnline, isReady, runIncrementalSync]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") return;
+      if (!isReady) return;
+      if (isOnline !== true) return;
+
+      const now = Date.now();
+      if (now - lastForegroundSyncAt.current < FOREGROUND_SYNC_THROTTLE_MS) {
+        return;
+      }
+
+      lastForegroundSyncAt.current = now;
+      runIncrementalSync().catch(() => {
+        // Best effort; next resume will retry.
+      });
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isOnline, isReady, runIncrementalSync]);
+}
+
+/**
+ * Manages the app's sync lifecycle:
+ * - Runs initial sync on first launch (quick — fetches ~200 entries)
+ * - Runs incremental sync on subsequent launches
+ * - Kicks off background backfill when the full history hasn't been fetched
+ * - Flushes the mutation queue when connectivity is restored
+ * - Exposes sync and backfill status for loading indicators
+ */
+export function useSync() {
+  const [state, setState] = useState<SyncState>({ status: "idle" });
+  const isOnline = useIsOnline();
+  const {
+    isBackfilling,
+    backfillProgress,
+    startBackfillIfNeeded,
+    abortBackfill,
+  } = useBackfillState();
+  const incrementalSyncInFlight = useRef(false);
+
+  const runIncrementalSync = useCallback(async () => {
+    if (incrementalSyncInFlight.current) return;
+
+    incrementalSyncInFlight.current = true;
+    try {
+      await incrementalSync();
+      await startBackfillIfNeeded();
+    } finally {
+      incrementalSyncInFlight.current = false;
+    }
+  }, [startBackfillIfNeeded]);
+
+  const runSync = useCallback(async () => {
+    const isFirstSync = await needsInitialSync();
+
+    try {
       if (isFirstSync) {
         setState({ status: "initial-sync" });
         await initialSync();
+        await startBackfillIfNeeded();
       } else {
         setState({ status: "syncing" });
-        await incrementalSync();
+        await runIncrementalSync();
       }
 
       setState({ status: "ready" });
-      startBackfillIfNeeded();
     } catch (error) {
-      if (state.status === "initial-sync") {
+      if (isFirstSync) {
         setState({
           status: "error",
           error: error instanceof Error ? error : new Error(String(error)),
@@ -83,28 +176,21 @@ export function useSync() {
         setState({ status: "ready" });
       }
     }
-  }, [startBackfillIfNeeded]);
+  }, [runIncrementalSync, startBackfillIfNeeded]);
+
+  useAutoIncrementalSync({
+    isOnline,
+    isReady: state.status === "ready",
+    runIncrementalSync,
+  });
 
   useEffect(() => {
     runSync();
 
     return () => {
-      backfillController.current?.abort();
+      abortBackfill();
     };
-  }, [runSync]);
-
-  useEffect(() => {
-    if (prevOnline.current === false && isOnline === true) {
-      flushMutationQueue().catch(() => {});
-
-      if (state.status === "ready") {
-        incrementalSync()
-          .then(() => startBackfillIfNeeded())
-          .catch(() => {});
-      }
-    }
-    prevOnline.current = isOnline;
-  }, [isOnline, state.status, startBackfillIfNeeded]);
+  }, [abortBackfill, runSync]);
 
   return {
     ...state,
