@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-entries";
 import { buildArticleHtml } from "@/lib/article-html";
 import { useLocalSearchParams } from "expo-router";
-import { Share, StyleSheet } from "react-native";
+import { Linking, Share, StyleSheet } from "react-native";
 import { WebView } from "react-native-webview";
 
 export default function Article() {
@@ -40,6 +40,19 @@ export default function Article() {
     if (message.type === "height") {
       setWebViewHeight(message.value);
     }
+  };
+
+  const onShouldStartLoadWithRequest = ({ url }: { url: string }) => {
+    if (
+      url.startsWith("about:") ||
+      url.startsWith("data:") ||
+      url.startsWith("javascript:")
+    ) {
+      return true;
+    }
+
+    void Linking.openURL(url);
+    return false;
   };
 
   if (!data) return null;
@@ -83,6 +96,7 @@ export default function Article() {
           originWhitelist={["*"]}
           scrollEnabled={false}
           onMessage={onMessage}
+          onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
         />
       </ThemedView>
     </ParallaxScrollView>
