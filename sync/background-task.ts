@@ -2,12 +2,20 @@ import * as BackgroundTask from "expo-background-task";
 import { BackgroundTaskResult } from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 
+import { initializeApi } from "@/api";
+import { getCredentials } from "@/lib/credentials";
 import { incrementalSync } from "@/sync/sync-engine";
 
 const BACKGROUND_SYNC_TASK = "background-sync";
 
 TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {
+    const credentials = await getCredentials();
+    if (!credentials) {
+      return BackgroundTaskResult.Success;
+    }
+
+    initializeApi(credentials);
     await incrementalSync();
     return BackgroundTaskResult.Success;
   } catch {
