@@ -4,6 +4,7 @@ import { AppState } from "react-native";
 import {
   type BackfillProgress,
   backfillOlderEntries,
+  hasLocalEntries,
   incrementalSync,
   initialSync,
   needsBackfill,
@@ -146,7 +147,9 @@ export function useSync() {
     incrementalSyncInFlight.current = true;
     try {
       await incrementalSync();
-      await startBackfillIfNeeded();
+      startBackfillIfNeeded().catch(() => {
+        // Best effort; next connectivity/foreground event will retry.
+      });
     } finally {
       incrementalSyncInFlight.current = false;
     }
@@ -154,20 +157,25 @@ export function useSync() {
 
   const runSync = useCallback(async () => {
     const isFirstSync = await needsInitialSync();
+    const shouldBlockInitialSync = isFirstSync && !(await hasLocalEntries());
 
     try {
       if (isFirstSync) {
-        setState({ status: "initial-sync" });
+        setState({
+          status: shouldBlockInitialSync ? "initial-sync" : "syncing",
+        });
         await initialSync();
-        await startBackfillIfNeeded();
       } else {
         setState({ status: "syncing" });
-        await runIncrementalSync();
+        await incrementalSync();
       }
 
       setState({ status: "ready" });
+      startBackfillIfNeeded().catch(() => {
+        // Best effort; next connectivity/foreground event will retry.
+      });
     } catch (error) {
-      if (isFirstSync) {
+      if (shouldBlockInitialSync) {
         setState({
           status: "error",
           error: error instanceof Error ? error : new Error(String(error)),
@@ -176,7 +184,7 @@ export function useSync() {
         setState({ status: "ready" });
       }
     }
-  }, [runIncrementalSync, startBackfillIfNeeded]);
+  }, [startBackfillIfNeeded]);
 
   useAutoIncrementalSync({
     isOnline,

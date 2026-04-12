@@ -1,12 +1,11 @@
-import { eq } from "drizzle-orm";
+import { eq, count as sqlCount } from "drizzle-orm";
 
 import { api } from "@/api";
 import type {
-  Enclosure,
+  Category,
   Entry,
   EntryQueryParams,
   Feed,
-  Category,
   Icon,
 } from "@/api/types";
 import { db } from "@/db/database";
@@ -342,6 +341,14 @@ export async function incrementalSync(signal?: AbortSignal): Promise<void> {
 export async function needsInitialSync(): Promise<boolean> {
   const lastSync = await getMeta("last_sync_at");
   return lastSync === null;
+}
+
+/**
+ * Check whether the local database already contains entries.
+ */
+export async function hasLocalEntries(): Promise<boolean> {
+  const rows = await db.select({ count: sqlCount() }).from(entries);
+  return (rows[0]?.count ?? 0) > 0;
 }
 
 /**
