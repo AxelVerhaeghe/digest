@@ -18,7 +18,7 @@ export default function SavedScreen() {
       <Tabs.Screen
         options={{
           headerRight: () => (
-            <HeaderActions onFilterPress={() => router.push("/preferences")} />
+            <HeaderActions onSettingsPress={() => router.push("/settings")} />
           ),
         }}
       />

@@ -6,8 +6,8 @@ import { z } from "zod";
 
 import { MinifluxClient } from "@/api/miniflux";
 import { Colors, Fonts } from "@/constants/theme";
+import { useSaveCredentialsMutation } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { saveCredentials } from "@/lib/credentials";
 import { ThemedButton } from "@/components/ui/themed-button";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedTextInput } from "@/components/ui/themed-text-input";
@@ -19,11 +19,7 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-type LoginScreenProps = {
-  onLogin: (baseUrl: string, token: string) => void;
-};
-
-export function LoginScreen({ onLogin }: LoginScreenProps) {
+export function LoginScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
   const [serverError, setServerError] = useState<string | null>(null);
@@ -38,17 +34,17 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     defaultValues: { baseUrl: "", token: "" },
   });
 
+  const saveCredentialsMutation = useSaveCredentialsMutation();
+
   async function onSubmit(data: LoginFormData) {
     setServerError(null);
-
     const baseUrl = data.baseUrl.replace(/\/+$/, "");
     const { token } = data;
 
     try {
       const testClient = new MinifluxClient({ baseUrl, token });
       await testClient.getCurrentUser();
-      await saveCredentials(baseUrl, token);
-      onLogin(baseUrl, token);
+      await saveCredentialsMutation.mutateAsync({ baseUrl, token });
     } catch (e) {
       if (e instanceof Error && "status" in e) {
         const status = (e as { status: number }).status;

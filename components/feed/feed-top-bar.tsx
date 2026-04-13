@@ -4,12 +4,12 @@ import { IconButton } from "@/components/ui/icon-button";
 
 type HeaderActionsProps = {
   onMarkAllRead?: () => void;
-  onFilterPress: () => void;
+  onSettingsPress: () => void;
 };
 
 export function HeaderActions({
   onMarkAllRead,
-  onFilterPress,
+  onSettingsPress,
 }: HeaderActionsProps) {
   return (
     <View style={styles.actions}>
@@ -20,11 +20,7 @@ export function HeaderActions({
           onPress={onMarkAllRead}
         />
       )}
-      <IconButton
-        icon="slider.horizontal.3"
-        variant="ghost"
-        onPress={onFilterPress}
-      />
+      <IconButton icon="gearshape" variant="ghost" onPress={onSettingsPress} />
     </View>
   );
 }

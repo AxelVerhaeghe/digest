@@ -32,6 +32,7 @@ const MAPPING = {
   bookmark: "bookmark-border",
   "bookmark.fill": "bookmark",
   "slider.horizontal.3": "tune",
+  gearshape: "settings",
   "square.and.arrow.up": "share",
   tray: "inbox",
   newspaper: "article",

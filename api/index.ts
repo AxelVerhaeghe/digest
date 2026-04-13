@@ -18,3 +18,10 @@ export const api = new MinifluxClient({ baseUrl: "", token: "" });
 export function initializeApi(config: RequestConfig): void {
   api.setConfig(config);
 }
+
+/**
+ * Clear the active API configuration after logout.
+ */
+export function resetApi(): void {
+  api.setConfig({ baseUrl: "", token: "" });
+}

@@ -25,7 +25,7 @@ const OPACITY_DEFAULT = 1;
 
 export type ThemedButtonProps = Omit<PressableProps, "children" | "style"> & {
   title: string;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "destructive";
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
 };
@@ -44,9 +44,22 @@ export function ThemedButton({
   const primaryFg = useThemeColor({}, "onPrimary");
   const secondaryBg = useThemeColor({}, "secondaryContainer");
   const secondaryFg = useThemeColor({}, "onSecondaryContainer");
+  const destructiveBg = useThemeColor({}, "error");
+  const destructiveFg = useThemeColor({}, "onError");
 
-  const bg = variant === "primary" ? primaryBg : secondaryBg;
-  const fg = variant === "primary" ? primaryFg : secondaryFg;
+  const colorsByVariant = {
+    primary: { backgroundColor: primaryBg, foregroundColor: primaryFg },
+    secondary: {
+      backgroundColor: secondaryBg,
+      foregroundColor: secondaryFg,
+    },
+    destructive: {
+      backgroundColor: destructiveBg,
+      foregroundColor: destructiveFg,
+    },
+  } as const;
+
+  const { backgroundColor, foregroundColor } = colorsByVariant[variant];
 
   const scale = useSharedValue(SCALE_DEFAULT);
   const opacity = useSharedValue(OPACITY_DEFAULT);
@@ -73,7 +86,7 @@ export function ThemedButton({
       <Pressable
         style={[
           styles.button,
-          { backgroundColor: bg },
+          { backgroundColor },
           (disabled || loading) && styles.disabled,
           style,
         ]}
@@ -83,9 +96,11 @@ export function ThemedButton({
         {...rest}
       >
         {loading ? (
-          <ActivityIndicator color={fg} size="small" />
+          <ActivityIndicator color={foregroundColor} size="small" />
         ) : (
-          <ThemedText style={[styles.label, { color: fg }]}>{title}</ThemedText>
+          <ThemedText style={[styles.label, { color: foregroundColor }]}>
+            {title}
+          </ThemedText>
         )}
       </Pressable>
     </Animated.View>

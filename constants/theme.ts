@@ -63,6 +63,7 @@ export const Colors = {
     inverseSurface: "#2e3130",
     inverseOnSurface: "#eff1ef",
     error: "#ba1a1a",
+    onError: "#ffffff",
   },
 
   /* ------------------------------------------------------------------ */
@@ -97,6 +98,7 @@ export const Colors = {
     inverseSurface: "#dee7e4",
     inverseOnSurface: "#1b211f",
     error: "#cf6679",
+    onError: "#ffffff",
   },
 };
 

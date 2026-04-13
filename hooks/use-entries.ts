@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef } from "react";
 
+import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { InfiniteData, QueryClient } from "@tanstack/react-query";
-import { and, asc, desc, eq, inArray, lt, SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, SQL } from "drizzle-orm";
 
+import type { EntryStatus } from "@/api/types";
 import { db } from "@/db/database";
+import { invalidateEntries, invalidateUnreadCounts } from "@/db/invalidate";
 import {
   categories,
   entries,
@@ -17,13 +19,10 @@ import {
   icons,
   pendingMutations,
 } from "@/db/schema";
-import { invalidateEntries, invalidateUnreadCounts } from "@/db/invalidate";
-import { fetchEntryContent, fetchOlderEntries } from "@/sync/sync-engine";
-import type { FetchOlderFilters } from "@/sync/sync-engine";
+import type { SortOrder, StatusFilter } from "@/hooks/use-settings";
 import { flushMutationQueue } from "@/sync/mutation-processor";
-import type { EntryStatus } from "@/api/types";
-import type { StatusFilter } from "@/hooks/use-settings";
-import type { SortOrder } from "@/hooks/use-settings";
+import type { FetchOlderFilters } from "@/sync/sync-engine";
+import { fetchEntryContent, fetchOlderEntries } from "@/sync/sync-engine";
 
 /** Number of entries loaded per page in infinite-scroll lists. */
 const PAGE_SIZE = 20;
@@ -135,8 +134,6 @@ function baseEntryListQuery() {
     .innerJoin(categories, eq(feeds.category_id, categories.id))
     .leftJoin(icons, eq(feeds.icon_id, icons.id));
 }
-
-type EntryListRow = Awaited<ReturnType<typeof baseEntryListQuery>>[number];
 
 /**
  * Page cursor for hybrid local/remote infinite queries.
@@ -382,6 +379,7 @@ export function useEntries(
   const filters: FetchOlderFilters =
     statusFilter === "unread" ? { status: "unread" } : {};
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useInfiniteQuery({
     queryKey: ["entries", "all", { statusFilter, sortOrder }],
     queryFn: async ({ pageParam }) => {
@@ -414,6 +412,7 @@ export function useFeedEntries(
   const filters: FetchOlderFilters =
     statusFilter === "unread" ? { feedId, status: "unread" } : { feedId };
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useInfiniteQuery({
     queryKey: ["entries", "feed", feedId, { statusFilter, sortOrder }],
     queryFn: async ({ pageParam }) => {
@@ -449,6 +448,7 @@ export function useCategoryEntries(
       ? { categoryId, status: "unread" }
       : { categoryId };
 
+  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return useInfiniteQuery({
     queryKey: ["entries", "category", categoryId, { statusFilter, sortOrder }],
     queryFn: async ({ pageParam }) => {
@@ -651,12 +651,12 @@ export function useMarkAsReadOnScrollHandler(enabled = false) {
       changed,
       viewableItems,
     }: {
-      changed: Array<{
+      changed: {
         isViewable: boolean;
         index: number | null;
         item: EntryListItem;
-      }>;
-      viewableItems: Array<{ index: number | null }>;
+      }[];
+      viewableItems: { index: number | null }[];
     }) => {
       if (!enabledRef.current) return;
       if (!viewableItems.length) return;

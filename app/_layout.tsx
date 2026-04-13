@@ -1,15 +1,15 @@
+import { useFonts } from "@expo-google-fonts/newsreader";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useFonts } from "@expo-google-fonts/newsreader";
 import { useMigrations } from "drizzle-orm/expo-sqlite/migrator";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import "react-native-reanimated";
 
@@ -21,8 +21,8 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { Colors, Fonts } from "@/constants/theme";
 import { db } from "@/db/database";
 import migrations from "@/drizzle/migrations";
+import { useCredentials } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getCredentials } from "@/lib/credentials";
 import { queryClient } from "@/lib/query-client";
 
 const LightTheme = {
@@ -47,32 +47,22 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-type AuthStatus = "checking" | "needs-login" | "authenticated";
-
 function AppContent() {
-  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
+  const { data: credentials, isLoading } = useCredentials();
 
   useEffect(() => {
-    async function checkCredentials() {
-      const credentials = await getCredentials();
-
-      if (credentials) {
-        initializeApi(credentials);
-        setAuthStatus("authenticated");
-      } else {
-        setAuthStatus("needs-login");
-      }
+    if (credentials) {
+      initializeApi(credentials);
     }
+  }, [credentials]);
 
-    checkCredentials();
-  }, []);
-
-  function handleLogin(baseUrl: string, token: string) {
-    initializeApi({ baseUrl, token });
-    setAuthStatus("authenticated");
-  }
+  const authStatus = credentials
+    ? "authenticated"
+    : isLoading
+      ? "checking"
+      : "needs-login";
 
   return (
     <>
@@ -96,13 +86,22 @@ function AppContent() {
           }}
         />
         <Stack.Screen
-          name="preferences"
+          name="settings"
           options={{
-            presentation: "formSheet",
-            title: "Preferences",
-            sheetAllowedDetents: [0.7],
-            sheetGrabberVisible: true,
-            sheetCornerRadius: 16,
+            title: "Settings",
+            headerShown: true,
+            headerStyle: { backgroundColor: theme.surface },
+            headerTitleStyle: { fontFamily: Fonts.families.newsreaderItalic },
+            headerTintColor: theme.onSurface,
+            headerShadowVisible: false,
+            headerLeft: ({ canGoBack }) =>
+              canGoBack && (
+                <IconButton
+                  icon="arrow.left"
+                  variant="ghost"
+                  onPressIn={() => router.back()}
+                />
+              ),
           }}
         />
       </Stack>
@@ -114,9 +113,7 @@ function AppContent() {
         <View
           style={[StyleSheet.absoluteFill, { backgroundColor: theme.surface }]}
         >
-          {authStatus === "needs-login" && (
-            <LoginScreen onLogin={handleLogin} />
-          )}
+          {authStatus === "needs-login" && <LoginScreen />}
         </View>
       )}
     </>

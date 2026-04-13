@@ -41,7 +41,7 @@ export default function HomeScreen() {
           headerRight: () => (
             <HeaderActions
               onMarkAllRead={() => markAllRead.mutate()}
-              onFilterPress={() => router.push("/preferences")}
+              onSettingsPress={() => router.push("/settings")}
             />
           ),
         }}
