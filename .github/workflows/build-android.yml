@@ -36,8 +36,42 @@ jobs:
           java-version: 17
           cache: gradle
 
+      - name: Resolve build version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version_name }}" ]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            echo "version_name=${{ github.event.inputs.version_name }}" >> "$GITHUB_OUTPUT"
+            echo "label=${{ github.event.inputs.version_name }}" >> "$GITHUB_OUTPUT"
+          else
+            short_sha="$(git rev-parse --short HEAD)"
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            echo "version_name=dev-${short_sha}" >> "$GITHUB_OUTPUT"
+            echo "label=dev-${short_sha}" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "version_code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean
+
+      - name: Inject Android version metadata
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+
+          const buildGradlePath = 'android/app/build.gradle';
+          const buildGradle = fs.readFileSync(buildGradlePath, 'utf8');
+          const updatedBuildGradle = buildGradle
+            .replace(/versionCode\s+\d+/, 'versionCode ${{ steps.version.outputs.version_code }}')
+            .replace(/versionName\s+"[^"]+"/, 'versionName "${{ steps.version.outputs.version_name }}"');
+
+          if (updatedBuildGradle === buildGradle) {
+            throw new Error('Failed to inject Android version metadata into android/app/build.gradle');
+          }
+
+          fs.writeFileSync(buildGradlePath, updatedBuildGradle);
+          EOF
 
       - name: Decode signing keystore
         run: |
@@ -52,15 +86,6 @@ jobs:
             -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Determine version label
-        id: version
-        run: |
-          if [ -n "${{ github.event.inputs.version_name }}" ]; then
-            echo "label=${{ github.event.inputs.version_name }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "label=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -69,13 +94,13 @@ jobs:
           retention-days: 90
 
       - name: Rename APK
-        if: github.event.inputs.version_name != ''
+        if: steps.version.outputs.is_release == 'true'
         run: |
           mv android/app/build/outputs/apk/release/app-release.apk \
             android/app/build/outputs/apk/release/digest-v${{ steps.version.outputs.label }}.apk
 
       - name: Create GitHub Release
-        if: github.event.inputs.version_name != ''
+        if: steps.version.outputs.is_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

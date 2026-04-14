@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fallback: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },
