@@ -37,12 +37,10 @@ export function ArticleHeader({
 }: ArticleHeaderProps) {
   const surface = useThemeColor({}, "surface");
   const surfaceContainer = useThemeColor({}, "surfaceContainer");
-  const onSurface = useThemeColor({}, "onSurface");
-  const onSurfaceVariant = useThemeColor({}, "onSurfaceVariant");
+  const textColor = useThemeColor({}, "onSurface");
+  const mutedTextColor = useThemeColor({}, "onSurfaceVariant");
   const borderColor = useThemeColor({}, "outlineVariant");
 
-  const textColor = hasImage ? "#fff" : onSurface;
-  const mutedTextColor = hasImage ? "rgba(255,255,255,0.7)" : onSurfaceVariant;
   const gradientFrom = hasImage ? "transparent" : surfaceContainer;
 
   const publishDate = formatDistanceToNow(new Date(publishedAt), {
@@ -58,11 +56,7 @@ export function ArticleHeader({
         style={styles.gradient}
       />
       <View style={styles.textContent}>
-        <Badge
-          style={{ color: hasImage ? "rgba(255,255,255,0.8)" : undefined }}
-        >
-          {category}
-        </Badge>
+        <Badge type="primary">{category}</Badge>
         <ExternalLink href={href}>
           <ThemedText type="title" style={{ color: textColor }}>
             {title}
@@ -106,7 +100,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   gradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   textContent: {
     padding: 16,
