@@ -60,8 +60,6 @@ export function IncrementalSyncProgressBar({
   );
 }
 
-export const INCREMENTAL_SYNC_BAR_HEIGHT = TOP_BAR_HEIGHT;
-
 const styles = StyleSheet.create({
   track: {
     position: "absolute",
@@ -69,6 +67,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: TOP_BAR_HEIGHT,
     overflow: "hidden",
+    zIndex: 100,
   },
   segment: {
     width: TOP_BAR_SEGMENT_WIDTH,
