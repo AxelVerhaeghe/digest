@@ -97,9 +97,21 @@ export function buildArticleHtml(
     blockquote {
       border-left: 3px solid ${c.outlineVariant};
       margin: 1em 0;
-      padding: 0.2em 0 0.2em 16px;
-      color: ${c.onSurfaceVariant};
+      padding: 0.5em;
+      padding-left: 2em;
+      color: ${c.onSurface};
       font-style: italic;
+    }
+
+    cite {
+      color: ${c.onSurfaceVariant};
+      font-style: initial;
+      text-transform: uppercase;
+      font-size: 0.8em;
+      
+      &:before {
+        content: '— ';
+      }
     }
 
     blockquote p:last-child {
