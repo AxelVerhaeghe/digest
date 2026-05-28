@@ -60,11 +60,9 @@ export function FeedCard({
 const styles = StyleSheet.create({
   container: {
     borderRadius: 4,
-    flex: 1,
     gap: 16,
   },
   metadata: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,

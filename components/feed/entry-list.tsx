@@ -1,14 +1,14 @@
 import type { ReactElement } from "react";
 import { useMemo, useRef } from "react";
-import type { ListRenderItemInfo } from "react-native";
 
+import { FlashList, type FlashListRef, type ListRenderItemInfo } from "@shopify/flash-list";
 import { useScrollToTop } from "@react-navigation/native";
 
 import { FeedCard } from "@/components/feed/feed-card";
 import { ThemedView } from "@/components/ui/themed-view";
 import type { EntryListItem, PageResult } from "@/hooks/use-entries";
 import { useMarkAsReadOnScrollHandler } from "@/hooks/use-entries";
-import { FlatList, StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import type { InfiniteData } from "@tanstack/react-query";
 
 type Props = {
@@ -21,7 +21,7 @@ type Props = {
   emptyState?: ReactElement;
 };
 
-function getItemKey(item: EntryListItem) {
+function getItemKey(item: EntryListItem, index: number) {
   return String(item.id);
 }
 
@@ -40,6 +40,14 @@ function renderItem({ item }: ListRenderItemInfo<EntryListItem>) {
   );
 }
 
+function getItemType(item: EntryListItem) {
+  return item.cover_image_url ? "with-image" : "text-only";
+}
+
+function ItemSeparator() {
+  return <View style={styles.separator} />;
+}
+
 export function EntryList({
   data,
   hasNextPage,
@@ -49,7 +57,7 @@ export function EntryList({
   markAsReadOnScroll,
   emptyState,
 }: Props) {
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlashListRef<EntryListItem>>(null);
   useScrollToTop(listRef);
 
   const flatData = useMemo(
@@ -70,20 +78,16 @@ export function EntryList({
 
   return (
     <ThemedView style={styles.container}>
-      <FlatList
+      <FlashList
         ref={listRef}
         data={flatData}
         keyExtractor={getItemKey}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
         renderItem={renderItem}
-        contentContainerStyle={[
-          styles.listContent,
-          flatData.length === 0 && styles.listContentEmpty,
-        ]}
-        initialNumToRender={4}
-        maxToRenderPerBatch={3}
-        windowSize={5}
+        getItemType={getItemType}
+        ItemSeparatorComponent={ItemSeparator}
+        contentContainerStyle={styles.listContent}
         refreshing={refreshing}
         onRefresh={onRefresh}
         viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
@@ -99,10 +103,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    gap: 64,
   },
-  listContentEmpty: {
-    flexGrow: 1,
-    justifyContent: "center",
+  separator: {
+    height: 64,
   },
 });

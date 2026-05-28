@@ -8,7 +8,8 @@
     "scheme": "digest",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.axelverhaeghe.digest"
     },
     "android": {
       "package": "com.axelverhaeghe.digest",

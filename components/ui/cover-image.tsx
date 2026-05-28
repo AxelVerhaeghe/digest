@@ -27,6 +27,7 @@ export function CoverImage({ url, style }: CoverImageProps) {
         style={styles.image}
         contentFit="cover"
         cachePolicy="memory-disk"
+        transition={200}
         placeholder={DefaultImageBlurhash}
         placeholderContentFit="cover"
       />
