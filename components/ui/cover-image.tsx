@@ -26,7 +26,7 @@ export function CoverImage({ url, style }: CoverImageProps) {
         recyclingKey={url}
         style={styles.image}
         contentFit="cover"
-        transition={200}
+        cachePolicy="memory-disk"
         placeholder={DefaultImageBlurhash}
         placeholderContentFit="cover"
       />

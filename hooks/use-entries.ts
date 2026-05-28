@@ -24,8 +24,8 @@ import { flushMutationQueue } from "@/sync/mutation-processor";
 import type { FetchOlderFilters } from "@/sync/sync-engine";
 import { fetchEntryContent, fetchOlderEntries } from "@/sync/sync-engine";
 
-/** Number of entries loaded per page in infinite-scroll lists. */
 const PAGE_SIZE = 20;
+const MAX_PAGES = 10;
 
 /**
  * Shared select fields for entry list queries. Avoids duplicating the
@@ -393,6 +393,7 @@ export function useEntries(
     },
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    maxPages: MAX_PAGES,
     initialPageParam: INITIAL_CURSOR,
   });
 }
@@ -426,6 +427,7 @@ export function useFeedEntries(
     },
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    maxPages: MAX_PAGES,
     initialPageParam: INITIAL_CURSOR,
   });
 }
@@ -462,6 +464,7 @@ export function useCategoryEntries(
     },
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    maxPages: MAX_PAGES,
     initialPageParam: INITIAL_CURSOR,
   });
 }
@@ -483,6 +486,7 @@ export function useUnreadEntries(sortOrder: SortOrder = "newest") {
     },
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    maxPages: MAX_PAGES,
     initialPageParam: INITIAL_CURSOR,
   });
 }
@@ -504,6 +508,7 @@ export function useStarredEntries(sortOrder: SortOrder = "newest") {
     },
     getNextPageParam: (lastPage) =>
       lastPage.items.length === PAGE_SIZE ? lastPage.nextCursor : undefined,
+    maxPages: MAX_PAGES,
     initialPageParam: INITIAL_CURSOR,
   });
 }
